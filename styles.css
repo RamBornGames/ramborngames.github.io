@@ -1,0 +1,241 @@
+:root {
+  color-scheme: dark;
+  --bg: #101010;
+  --screen: #071f17;
+  --screen-light: #0d3b28;
+  --green: #7dff9b;
+  --green-soft: #b7ffc8;
+  --amber: #ffd166;
+  --paper: #f2e7c9;
+  --ink: #1a1a1a;
+  --line: #3cff71;
+  --shadow: #000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.025) 50%, rgba(0, 0, 0, 0.12) 50%),
+    radial-gradient(circle at 50% 0%, #253325 0, var(--bg) 55%);
+  background-size: 100% 4px, auto;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--green-soft);
+  font-family: "Courier New", Courier, monospace;
+  letter-spacing: 0;
+}
+
+a {
+  color: inherit;
+}
+
+.page-shell {
+  width: min(980px, calc(100% - 28px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 28px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.site-header,
+footer {
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--amber);
+  font-size: clamp(0.78rem, 2.4vw, 1rem);
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: var(--paper);
+  font-size: clamp(2.1rem, 8vw, 4.6rem);
+  line-height: 0.95;
+  text-shadow: 3px 3px 0 var(--shadow), 5px 5px 0 #7c2f2f;
+}
+
+.tagline {
+  max-width: 640px;
+  margin: 16px auto 0;
+  color: var(--green-soft);
+  font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+  line-height: 1.5;
+}
+
+.terminal-panel {
+  border: 4px double var(--line);
+  background: var(--screen);
+  box-shadow: 12px 12px 0 var(--shadow);
+}
+
+.panel-top {
+  min-height: 34px;
+  padding: 8px 10px;
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid var(--line);
+  background: var(--paper);
+}
+
+.panel-top span {
+  width: 14px;
+  height: 14px;
+  display: block;
+  border: 2px solid var(--ink);
+  background: #d13f32;
+}
+
+.panel-top span:nth-child(2) {
+  background: var(--amber);
+}
+
+.panel-top span:nth-child(3) {
+  background: var(--line);
+}
+
+.panel-body {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 26px;
+  padding: clamp(18px, 4vw, 34px);
+  background:
+    repeating-linear-gradient(0deg, rgba(125, 255, 155, 0.035) 0 2px, transparent 2px 8px),
+    var(--screen);
+}
+
+.hero-art {
+  align-self: start;
+  border: 2px solid var(--line);
+  background: var(--screen-light);
+  padding: 12px;
+  image-rendering: pixelated;
+}
+
+.hero-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: saturate(1.2) contrast(1.05);
+}
+
+.content {
+  min-width: 0;
+}
+
+.prompt,
+.status-line {
+  margin: 0;
+  color: var(--amber);
+  font-weight: 700;
+}
+
+h2 {
+  margin: 10px 0 18px;
+  color: var(--green);
+  font-size: clamp(1.35rem, 4vw, 2.1rem);
+  line-height: 1.15;
+}
+
+.link-list {
+  display: grid;
+  gap: 12px;
+}
+
+.link-list a {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 68px;
+  padding: 12px 14px 12px 34px;
+  border: 2px solid var(--line);
+  background: #03130e;
+  text-decoration: none;
+  box-shadow: 5px 5px 0 var(--shadow);
+}
+
+.link-list a::before {
+  content: "> ";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.link-list a:hover,
+.link-list a:focus-visible {
+  color: var(--ink);
+  background: var(--green);
+  outline: 3px solid var(--amber);
+  outline-offset: 3px;
+}
+
+.link-name {
+  font-weight: 700;
+}
+
+.link-url {
+  overflow-wrap: anywhere;
+  color: currentColor;
+  font-size: 0.88rem;
+  opacity: 0.82;
+}
+
+.status-line {
+  margin-top: 18px;
+  min-height: 1.4em;
+}
+
+footer {
+  margin-top: auto;
+  color: var(--paper);
+  font-size: 0.88rem;
+}
+
+footer p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    width: min(100% - 18px, 980px);
+    padding-top: 18px;
+  }
+
+  .terminal-panel {
+    box-shadow: 7px 7px 0 var(--shadow);
+  }
+
+  .panel-body {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-art {
+    max-width: 220px;
+    margin: 0 auto;
+  }
+
+  .link-list a {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .link-name {
+    margin-left: 0;
+  }
+}
