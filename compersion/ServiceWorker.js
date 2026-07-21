@@ -1,9 +1,9 @@
 const cacheName = "Ramsey Fireborn Games Studio-Compersion-0.1.0";
 const contentToCache = [
-    "Build/compersion2d.loader.js",
-    "Build/compersion2d.framework.js.unityweb",
-    "Build/compersion2d.data.unityweb",
-    "Build/compersion2d.wasm.unityweb",
+    "Build/2026.07.20_build4_compersion2d.loader.js",
+    "Build/2026.07.20_build4_compersion2d.framework.js.unityweb",
+    "Build/2026.07.20_build4_compersion2d.data.unityweb",
+    "Build/2026.07.20_build4_compersion2d.wasm.unityweb",
     "TemplateData/style.css"
 
 ];
