@@ -49,6 +49,14 @@ h1 {
 
 .credits span { display: block; }
 
+.reader-count {
+  margin: 0 0 1.25rem;
+}
+
+.reader-count img {
+  display: block;
+}
+
 .table-of-contents {
   display: flex;
   flex-direction: column;
