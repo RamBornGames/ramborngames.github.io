@@ -1,0 +1,141 @@
+:root {
+  --ink: #171717;
+  --muted: #5c5c5c;
+  --link: #0000ee;
+  --paper: #ffffff;
+  --bank: #eef3df;
+  --bank-border: #78885a;
+  --rule: #c8c8c8;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font: 14px/1.45 Arial, Helvetica, sans-serif;
+}
+
+main {
+  width: min(70ch, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2.25rem 0 4rem;
+}
+
+a { color: var(--link); }
+
+.home-link { margin: 0 0 2rem; }
+
+h1 {
+  margin: 0 0 .2rem;
+  font-size: 2rem;
+  line-height: 1.08;
+  letter-spacing: -.02em;
+}
+
+.pronunciation,
+.part-of-speech,
+.definition { margin: .15rem 0; }
+
+.part-of-speech { font-style: italic; }
+
+.credits {
+  margin: 1.5rem 0 1.25rem;
+  color: var(--muted);
+}
+
+.credits span { display: block; }
+
+.table-of-contents {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .3rem;
+  margin: 0 0 2.25rem;
+  padding: .65rem 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+section {
+  scroll-margin-top: 1rem;
+}
+
+h2 {
+  margin: 2.6rem 0 1rem;
+  padding-bottom: .25rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 1.2rem;
+}
+
+p { margin: 0 0 1rem; }
+
+.question {
+  margin-top: 1.8rem;
+  font-weight: 700;
+}
+
+.speaker { font-weight: 700; }
+
+.portrait {
+  margin: 1.25rem auto 1.5rem;
+  text-align: center;
+}
+
+.portrait img {
+  display: block;
+  width: 100%;
+  max-height: 430px;
+  object-fit: contain;
+}
+
+.portrait.narrow img { max-height: 360px; }
+
+figcaption {
+  margin-top: .35rem;
+  color: var(--muted);
+  font-size: .86rem;
+}
+
+.word-bank {
+  margin: 1.5rem 0;
+  padding: .85rem 1rem;
+  border: 1px solid var(--bank-border);
+  border-left-width: 5px;
+  background: var(--bank);
+}
+
+.word-bank p:last-child { margin-bottom: 0; }
+
+.word-bank .label {
+  margin-bottom: .3rem;
+  color: #45512e;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.excerpt { font-style: italic; }
+
+.end-note {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+@media (max-width: 520px) {
+  body { font-size: 15px; }
+  main { width: min(70ch, calc(100% - 1.4rem)); padding-top: 1.25rem; }
+  h1 { font-size: 1.65rem; }
+}
+
+@media print {
+  .home-link { display: none; }
+  main { width: 70ch; padding: 0; }
+  a { color: inherit; }
+}
