@@ -23,7 +23,6 @@
 html {
   min-height: 100%;
   background: var(--cream-deep);
-  scroll-behavior: smooth;
 }
 
 body {
@@ -527,10 +526,6 @@ figcaption {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   .table-of-contents a {
     transition: none;
   }
