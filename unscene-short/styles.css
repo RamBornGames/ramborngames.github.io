@@ -123,10 +123,6 @@ h1 {
   font-weight: 700;
 }
 
-.pronunciation::after {
-  content: " ";
-}
-
 .part-of-speech {
   font-style: normal;
 }
