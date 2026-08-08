@@ -1,16 +1,20 @@
-const cacheName = "Ramsey Fireborn Games Studio-Compersion-0.1.0";
+const version = encodeURIComponent("2026.08.08.4-bf6505a4");
+const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
+const legacyCachePrefix = "Ramsey Fireborn Games Studio-Compersion-";
+const cacheName = cachePrefix + version;
 const contentToCache = [
-    "Build/2026.07.20_build4_compersion2d.loader.js",
-    "Build/2026.07.20_build4_compersion2d.framework.js.unityweb",
-    "Build/2026.07.20_build4_compersion2d.data.unityweb",
-    "Build/2026.07.20_build4_compersion2d.wasm.unityweb",
-    "TemplateData/style.css"
+    "Build/2026.08.08_build1_compersion2d.loader.js?v=" + version,
+    "Build/2026.08.08_build1_compersion2d.framework.js.unityweb?v=" + version,
+    "Build/2026.08.08_build1_compersion2d.data.unityweb?v=" + version,
+    "Build/2026.08.08_build1_compersion2d.wasm.unityweb?v=" + version,
+    "TemplateData/style.css?v=" + version
 
 ];
 
 self.addEventListener('install', function (e) {
     console.log('[Service Worker] Install');
-    
+    self.skipWaiting();
+
     e.waitUntil((async function () {
       const cache = await caches.open(cacheName);
       console.log('[Service Worker] Caching all: app shell and content');
@@ -18,16 +22,44 @@ self.addEventListener('install', function (e) {
     })());
 });
 
+self.addEventListener('activate', function (e) {
+    e.waitUntil((async function () {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames
+        .filter(name => name !== cacheName &&
+          (name.startsWith(cachePrefix) || name.startsWith(legacyCachePrefix)))
+        .map(name => caches.delete(name)));
+      await self.clients.claim();
+    })());
+});
+
 self.addEventListener('fetch', function (e) {
+    if (e.request.method !== 'GET') { return; }
+
     e.respondWith((async function () {
-      let response = await caches.match(e.request);
+      const cache = await caches.open(cacheName);
       console.log(`[Service Worker] Fetching resource: ${e.request.url}`);
+
+      if (e.request.mode === 'navigate') {
+        try {
+          const response = await fetch(e.request, { cache: 'no-store' });
+          if (response.ok) { await cache.put(e.request, response.clone()); }
+          return response;
+        } catch (error) {
+          const response = await cache.match(e.request);
+          if (response) { return response; }
+          throw error;
+        }
+      }
+
+      let response = await cache.match(e.request);
       if (response) { return response; }
 
       response = await fetch(e.request);
-      const cache = await caches.open(cacheName);
-      console.log(`[Service Worker] Caching new resource: ${e.request.url}`);
-      cache.put(e.request, response.clone());
+      if (response.ok) {
+        console.log(`[Service Worker] Caching new resource: ${e.request.url}`);
+        await cache.put(e.request, response.clone());
+      }
       return response;
     })());
 });
