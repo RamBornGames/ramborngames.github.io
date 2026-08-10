@@ -1,14 +1,17 @@
-const version = encodeURIComponent("2026.08.08.4-bf6505a4");
+const version = encodeURIComponent("2026.08.09.18-e793af67");
 const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
 const legacyCachePrefix = "Ramsey Fireborn Games Studio-Compersion-";
 const cacheName = cachePrefix + version;
 const contentToCache = [
-    "Build/2026.08.08_build1_compersion2d.loader.js?v=" + version,
-    "Build/2026.08.08_build1_compersion2d.framework.js.unityweb?v=" + version,
-    "Build/2026.08.08_build1_compersion2d.data.unityweb?v=" + version,
-    "Build/2026.08.08_build1_compersion2d.wasm.unityweb?v=" + version,
-    "TemplateData/style.css?v=" + version
-
+    "index.html",
+    "Build/2026.08.09_build1_compersion2d.loader.js?v=" + version,
+    "Build/2026.08.09_build1_compersion2d.framework.js.unityweb?v=" + version,
+    "Build/2026.08.09_build1_compersion2d.data.unityweb?v=" + version,
+    "Build/2026.08.09_build1_compersion2d.wasm.unityweb?v=" + version,
+    "TemplateData/style.css?v=" + version,
+    "TemplateData/unity-logo-dark.png",
+    "TemplateData/progress-bar-empty-dark.png",
+    "TemplateData/progress-bar-full-dark.png"
 ];
 
 self.addEventListener('install', function (e) {
@@ -46,7 +49,7 @@ self.addEventListener('fetch', function (e) {
           if (response.ok) { await cache.put(e.request, response.clone()); }
           return response;
         } catch (error) {
-          const response = await cache.match(e.request);
+          const response = await cache.match(e.request) || await cache.match("index.html");
           if (response) { return response; }
           throw error;
         }
