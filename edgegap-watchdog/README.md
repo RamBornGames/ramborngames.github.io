@@ -7,7 +7,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs t
 - This is a strict singleton design: everyone connects to one persistent server.
 - After three failures, the watchdog asks Edgegap to stop the known active deployment and waits for confirmed termination before creating a replacement. It never intentionally runs two production deployments against the shared Cloudflare Tunnel.
 - This creates a short outage and disconnects current players during recovery, but prevents split-brain game state.
-- The current `wss://` check proves the multiplayer socket accepts connections. An application-aware health endpoint would be stronger, but is not required for basic singleton recovery.
+- Health is intentionally the same direct WebSocket handshake introduced by commit `763e6fb`: open `wss://compersion.charliefeuerborn.com` and require it to connect. This verifies the browser-to-Cloudflare-to-tunnel-to-Bayou path without requiring a separate Unity readiness endpoint.
 - Production is intentionally parked with `ENABLE_DEPLOYMENTS=false` after the 2026-08-11 controlled launch proved that the Cloudflare connector could become healthy but the uploaded Unity image did not expose Bayou on localhost:7771. Keep deployment creation disabled until a corrected image passes one controlled launch. Before changing or redeploying this Worker, verify the stable Edgegap version, placement, secrets, tunnel route, and that no more than one application-wide deployment is live.
 - Hard hourly/daily attempt caps and an ambiguity circuit breaker limit deployment storms.
 - The API token is stored as a Worker secret and never sent to the website.
@@ -28,7 +28,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs t
    - `EDGEGAP_VERSION`
    - `INITIAL_DEPLOYMENT_ID` only if deliberately seeding a known running deployment; normal authoritative reconciliation leaves it blank
    - `EDGEGAP_DEPLOYMENT_USERS_JSON` with the region/user placement Edgegap should use
-   - `HEALTH_URL` after implementing a real readiness endpoint
+   - `HEALTH_URL` only if the stable public multiplayer WebSocket hostname changes; keep it as a `wss://` URL
    - `PUBLIC_ORIGIN` if the homepage origin changes
 
 3. Store secrets interactively (do not paste them into tracked files):
@@ -63,6 +63,6 @@ This behavior is gated by `ENABLE_DEPLOYMENTS`. When it is `false`, checks fail 
 
 The included route handles `https://compersion.charliefeuerborn.com/watchdog/*`, and the homepage sends an empty `POST` to `/watchdog/wake`. The Durable Object records an immediate alarm before the Worker returns `202`; the alarm performs health and Edgegap reconciliation asynchronously. The existing direct WebSocket check independently drives the visible status message. Until the Worker route is deployed, the wake fails harmlessly and status still works. Do not embed `ADMIN_TOKEN` or `EDGEGAP_TOKEN` in the site. CORS reduces browser drive-by calls but is not authentication; apply Cloudflare rate controls to `/watchdog/wake` and `/watchdog/status` while allowing the documented status-poll cadence.
 
-## Recommended server health endpoint
+## Health-check contract
 
-Return HTTP `200` only after the multiplayer listener and required game state are initialized. Return `503` during startup or when the server cannot accept new players. Do not return credentials, environment variables, logs, filesystem paths, or player information.
+Do not add a separate HTTP readiness endpoint for this architecture. The homepage and Worker deliberately use the same direct WSS handshake. A successful check means Cloudflare reached the Bayou listener and completed the WebSocket opening handshake; it does not claim that every gameplay subsystem is healthy. Actual game-client connection remains the post-build smoke test.
