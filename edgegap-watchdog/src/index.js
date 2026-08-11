@@ -36,10 +36,28 @@ export function nextWakeAt(state, now) {
 }
 
 export function deploymentStatus(body) {
+  const knownStatuses = new Set([
+    "REQUESTED", "SEEKING", "DEPLOYING", "READY", "ERROR", "TERMINATED", "STOPPED",
+  ]);
+  const normalize = value => {
+    if (typeof value !== "string") return "";
+    const upper = value.toUpperCase();
+    if (knownStatuses.has(upper)) return upper;
+    const suffix = upper.split(".").pop();
+    return knownStatuses.has(suffix) ? suffix : "";
+  };
   const visit = (value, depth = 0) => {
     if (!value || typeof value !== "object" || depth > 5) return "";
     for (const key of ["current_status", "status", "state"]) {
-      if (typeof value[key] === "string") return value[key].toUpperCase();
+      const normalized = normalize(value[key]);
+      if (normalized) return normalized;
+    }
+    // Edgegap has returned lifecycle strings under different wrapper/key names.
+    // Accept only the explicit lifecycle vocabulary rather than treating an
+    // arbitrary string (such as a city or request ID) as status.
+    for (const child of Object.values(value)) {
+      const normalized = normalize(child);
+      if (normalized) return normalized;
     }
     for (const child of Object.values(value)) {
       const found = visit(child, depth + 1);

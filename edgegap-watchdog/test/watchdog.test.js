@@ -36,6 +36,9 @@ test("normalizes Edgegap deployment status", () => {
   assert.equal(deploymentStatus({ status: { current_status: "ready" } }), "READY");
   assert.equal(deploymentStatus({ data: { current_status: "deploying" } }), "DEPLOYING");
   assert.equal(deploymentStatus({ result: { deployment: { status: { state: "ready" } } } }), "READY");
+  assert.equal(deploymentStatus({ result: { deployment: { lifecycle: "ready" } } }), "READY");
+  assert.equal(deploymentStatus({ current_status: "Status.READY" }), "READY");
+  assert.equal(deploymentStatus({ result: { city: "readyville" } }), "");
 });
 
 test("finds the application name in flat and nested Edgegap payloads", () => {

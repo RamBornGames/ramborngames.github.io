@@ -1,6 +1,6 @@
 # Compersion Edgegap watchdog
 
-This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs at most one authoritative health check per minute. After the first failure, a Durable Object alarm continues the incident checks and replacement observation without requiring more visitors; the alarm stops when service is healthy. A SQLite-backed Durable Object stores state and serializes checks.
+This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs three serialized cold-start health checks about five seconds apart. After the first failure, a Durable Object alarm continues the incident checks and replacement observation without requiring more visitors; the alarm stops when service is healthy. A SQLite-backed Durable Object stores state and serializes checks.
 
 ## Assumptions and safety behavior
 
@@ -8,7 +8,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs a
 - After three failures, the watchdog asks Edgegap to stop the known active deployment and waits for confirmed termination before creating a replacement. It never intentionally runs two production deployments against the shared Cloudflare Tunnel.
 - This creates a short outage and disconnects current players during recovery, but prevents split-brain game state.
 - The current `wss://` check proves the multiplayer socket accepts connections. An application-aware health endpoint would be stronger, but is not required for basic singleton recovery.
-- Production is intentionally parked with `ENABLE_DEPLOYMENTS=false` after the 2026-08-11 tunnel-authentication incident. A homepage visit may request and display status, but the Worker cannot create an Edgegap deployment while this switch is false. Before re-enabling it, follow the recovery checklist in the Unity repository's `Docs/Agents/EDGEGAP_INCIDENT_2026-08-11.md` and verify zero live deployments, the stable version secret, and tunnel connectivity with one controlled launch.
+- Production is intentionally parked with `ENABLE_DEPLOYMENTS=false` after the 2026-08-11 controlled launch proved that the Cloudflare connector could become healthy but the uploaded Unity image did not expose Bayou on localhost:7771. Keep deployment creation disabled until a corrected image passes one controlled launch. Before changing or redeploying this Worker, verify the stable Edgegap version, placement, secrets, tunnel route, and that no more than one application-wide deployment is live.
 - Hard hourly/daily attempt caps and an ambiguity circuit breaker limit deployment storms.
 - The API token is stored as a Worker secret and never sent to the website.
 - The Cloudflare Tunnel token is injected into the Edgegap app version as the secret environment variable `CF_TUNNEL_TOKEN`; it is not baked into the container image.
@@ -55,7 +55,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs a
 
 ## Recovery timing
 
-With the included settings, a homepage visit wakes the Worker. If that check fails, alarms perform subsequent checks once per minute. After three failures, singleton recovery stops the known server, waits up to five minutes for confirmed termination, and then creates one replacement. The replacement has ten minutes to become `READY` and reconnect the public WebSocket. Cooldowns, attempt caps, durable attempt IDs, and a circuit breaker limit retries.
+With the included settings, a homepage visit wakes the Worker. If that check fails, alarms perform two subsequent checks about five seconds apart. After three failures, singleton recovery stops the known server, waits up to five minutes for confirmed termination, and then creates one replacement. The replacement has ten minutes to become `READY` and reconnect the public WebSocket. Cooldowns, attempt caps, durable attempt IDs, and a circuit breaker limit retries.
 
 This behavior is gated by `ENABLE_DEPLOYMENTS`. When it is `false`, checks fail closed without creating a server. Changing the tracked value is not enough: deploy the Worker deliberately, then confirm the binding shown by Wrangler.
 

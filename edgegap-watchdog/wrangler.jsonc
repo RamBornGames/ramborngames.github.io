@@ -32,7 +32,7 @@
     "EDGEGAP_VERSION": "26.08.11-watchdog-secure",
     "EDGEGAP_DEPLOYMENT_USERS_JSON": "[{\"user_type\":\"geo_coordinates\",\"user_data\":{\"latitude\":39.8283,\"longitude\":-98.5795}}]",
     "FAILURES_BEFORE_DEPLOY": "3",
-    "MIN_CHECK_INTERVAL_SECONDS": "60",
+    "MIN_CHECK_INTERVAL_SECONDS": "5",
     "DEPLOY_COOLDOWN_SECONDS": "900",
     "REPLACEMENT_TIMEOUT_SECONDS": "600",
     "STOP_TIMEOUT_SECONDS": "300",
