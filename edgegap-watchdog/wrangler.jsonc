@@ -26,10 +26,10 @@
   "vars": {
     "HEALTH_URL": "wss://compersion.charliefeuerborn.com",
     "PUBLIC_ORIGIN": "https://ramborngames.github.io",
-    "ENABLE_DEPLOYMENTS": "false",
+    "ENABLE_DEPLOYMENTS": "true",
     "INITIAL_DEPLOYMENT_ID": "",
     "EDGEGAP_APPLICATION": "compersion",
-    "EDGEGAP_VERSION": "26.07.20-23.45.08-UTC-compersion2dsmallcolors",
+    "EDGEGAP_VERSION": "26.08.11-watchdog-secure",
     "EDGEGAP_DEPLOYMENT_USERS_JSON": "[{\"user_type\":\"geo_coordinates\",\"user_data\":{\"latitude\":39.8283,\"longitude\":-98.5795}}]",
     "FAILURES_BEFORE_DEPLOY": "3",
     "MIN_CHECK_INTERVAL_SECONDS": "60",

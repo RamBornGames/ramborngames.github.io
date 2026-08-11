@@ -8,7 +8,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs a
 - After three failures, the watchdog asks Edgegap to stop the known active deployment and waits for confirmed termination before creating a replacement. It never intentionally runs two production deployments against the shared Cloudflare Tunnel.
 - This creates a short outage and disconnects current players during recovery, but prevents split-brain game state.
 - The current `wss://` check proves the multiplayer socket accepts connections. An application-aware health endpoint would be stronger, but is not required for basic singleton recovery.
-- `ENABLE_DEPLOYMENTS` defaults to `false`. Turn it on only after entering and verifying the current deployment ID, Edgegap app/version, placement, and secret token.
+- Production currently has `ENABLE_DEPLOYMENTS=true`. Before changing or redeploying this Worker, verify the stable Edgegap version, placement, secrets, tunnel route, and that no more than one application-wide deployment is live.
 - Hard hourly/daily attempt caps and an ambiguity circuit breaker limit deployment storms.
 - The API token is stored as a Worker secret and never sent to the website.
 - The Cloudflare Tunnel token is injected into the Edgegap app version as the secret environment variable `CF_TUNNEL_TOKEN`; it is not baked into the container image.
@@ -26,7 +26,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs a
 
    - `EDGEGAP_APPLICATION`
    - `EDGEGAP_VERSION`
-   - `INITIAL_DEPLOYMENT_ID` with the currently running deployment's request ID
+   - `INITIAL_DEPLOYMENT_ID` only if deliberately seeding a known running deployment; normal authoritative reconciliation leaves it blank
    - `EDGEGAP_DEPLOYMENT_USERS_JSON` with the region/user placement Edgegap should use
    - `HEALTH_URL` after implementing a real readiness endpoint
    - `PUBLIC_ORIGIN` if the homepage origin changes
@@ -59,7 +59,7 @@ With the included settings, a homepage visit wakes the Worker. If that check fai
 
 ## Connect the homepage
 
-The included route handles `https://compersion.charliefeuerborn.com/watchdog/*`, and the homepage now sends a non-blocking empty `POST` to `/watchdog/wake`. The Worker immediately returns `202`; the existing direct WebSocket check independently drives the visible status message. Until the Worker route is deployed, the wake fails harmlessly and status still works. Do not embed `ADMIN_TOKEN` or `EDGEGAP_TOKEN` in the site. Configure a Cloudflare rate-limit rule for `/watchdog/wake`; CORS reduces browser drive-by calls but does not authenticate command-line clients.
+The included route handles `https://compersion.charliefeuerborn.com/watchdog/*`, and the homepage sends an empty `POST` to `/watchdog/wake`. The Durable Object records an immediate alarm before the Worker returns `202`; the alarm performs health and Edgegap reconciliation asynchronously. The existing direct WebSocket check independently drives the visible status message. Until the Worker route is deployed, the wake fails harmlessly and status still works. Do not embed `ADMIN_TOKEN` or `EDGEGAP_TOKEN` in the site. CORS reduces browser drive-by calls but is not authentication; apply Cloudflare rate controls to `/watchdog/wake` and `/watchdog/status` while allowing the documented status-poll cadence.
 
 ## Recommended server health endpoint
 

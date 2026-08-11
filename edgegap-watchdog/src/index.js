@@ -213,7 +213,12 @@ export class Watchdog {
   }
 
   async wake() {
-    return this.check();
+    const state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
+    // Accept the visitor quickly and let the Durable Object alarm perform the
+    // potentially slow socket/API reconciliation. Repeated wakes only replace
+    // this singleton alarm; they cannot run concurrent deployment checks.
+    if (!state.circuitOpen) await this.ctx.storage.setAlarm(Date.now());
+    return state;
   }
 
   async updateAlarm(state) {
@@ -520,8 +525,10 @@ export default {
 
     if (pathname === "/wake" && request.method === "POST") {
       if (origin !== allowedOrigin) return new Response("Forbidden", { status: 403 });
-      const id = env.WATCHDOG.idFromName("compersion-primary");
-      ctx.waitUntil(env.WATCHDOG.get(id).fetch("https://watchdog.internal/wake", { method: "POST" }));
+      const id = env.WATCHDOG.idFromName("compersion-primary-v3");
+      // Await only the Durable Object's durable alarm reservation. Health and
+      // Edgegap API work runs from that alarm, keeping the visitor response fast.
+      await env.WATCHDOG.get(id).fetch("https://watchdog.internal/wake", { method: "POST" });
       return new Response(null, {
         status: 202,
         headers: {
@@ -534,7 +541,7 @@ export default {
 
     if (pathname === "/status" && request.method === "GET") {
       if (origin !== allowedOrigin) return new Response("Forbidden", { status: 403 });
-      const id = env.WATCHDOG.idFromName("compersion-primary");
+      const id = env.WATCHDOG.idFromName("compersion-primary-v3");
       const response = await env.WATCHDOG.get(id).fetch("https://watchdog.internal/public-status");
       const result = new Response(response.body, response);
       result.headers.set("Access-Control-Allow-Origin", allowedOrigin);
@@ -548,7 +555,7 @@ export default {
       return new Response("Unauthorized", { status: 401 });
     }
     if (!["/admin/status", "/admin/check", "/admin/reset"].includes(pathname)) return new Response("Not found", { status: 404 });
-    const id = env.WATCHDOG.idFromName("compersion-primary");
+    const id = env.WATCHDOG.idFromName("compersion-primary-v3");
     const internalPath = pathname === "/admin/check" ? "/check" : pathname === "/admin/reset" ? "/reset" : "/status";
     return env.WATCHDOG.get(id).fetch(`https://watchdog.internal${internalPath}`, {
       method: ["/check", "/reset"].includes(internalPath) ? "POST" : "GET",
