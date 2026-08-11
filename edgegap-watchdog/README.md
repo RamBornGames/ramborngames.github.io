@@ -57,6 +57,8 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs t
 
 With the included settings, a homepage visit wakes the Worker. If that check fails, alarms perform two subsequent checks about five seconds apart. After three failures, singleton recovery stops the known server, waits up to five minutes for confirmed termination, and then creates one replacement. The replacement has ten minutes to become `READY` and reconnect the public WebSocket. Cooldowns, attempt caps, durable attempt IDs, and a circuit breaker limit retries.
 
+`GET /watchdog/status` reports the real durable `failureCount` and configured `failureThreshold`; the homepage renders these as **Checking server (1/3)**, for example. **Server booting** is returned only after Edgegap accepts the create request and supplies a deployment ID. Browser polling controls when the display observes a state, but it does not advance the state machine.
+
 This behavior is gated by `ENABLE_DEPLOYMENTS`. When it is `false`, checks fail closed without creating a server. Changing the tracked value is not enough: deploy the Worker deliberately, then confirm the binding shown by Wrangler.
 
 ## Connect the homepage

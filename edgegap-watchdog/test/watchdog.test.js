@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyContainerLogs, deploymentApplication, deploymentStatus, initialState, nextWakeAt, shouldDeploy } from "../src/index.js";
+import { classifyContainerLogs, deploymentApplication, deploymentStatus, initialState, nextWakeAt, shouldDeploy, Watchdog } from "../src/index.js";
 
 test("requires the configured number of failures", () => {
   const state = initialState();
@@ -58,4 +58,23 @@ test("a repeated wake preserves the pending incident alarm", () => {
   state.nextCheckNotBefore = 20_000;
   assert.equal(nextWakeAt(state, 10_000), 20_000);
   assert.equal(nextWakeAt(state, 30_000), 30_000);
+});
+
+test("public status counts checks and only reports booting after Edgegap accepts", () => {
+  const watchdog = new Watchdog(null, { FAILURES_BEFORE_DEPLOY: "3" });
+  const state = initialState();
+  state.consecutiveFailures = 2;
+  state.phase = "starting";
+  state.pendingAttemptId = "wd-pending";
+  assert.deepEqual(watchdog.publicState(state), {
+    status: "checking",
+    checkedAt: null,
+    reason: null,
+    failureCount: 2,
+    failureThreshold: 3,
+    deploymentAccepted: false,
+  });
+  state.replacementDeploymentId = "accepted-id";
+  assert.equal(watchdog.publicState(state).status, "starting");
+  assert.equal(watchdog.publicState(state).deploymentAccepted, true);
 });

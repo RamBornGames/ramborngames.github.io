@@ -289,15 +289,21 @@ export class Watchdog {
   }
 
   publicState(state) {
+    const failureThreshold = positiveNumber(this.env.FAILURES_BEFORE_DEPLOY, 3);
     let status = "checking";
     if (state.circuitOpen) status = "error";
     else if (state.phase === "stopping") status = "stopping";
-    else if (state.phase === "starting" || state.replacementDeploymentId) status = "starting";
+    // Do not claim Edgegap is booting until its create response supplied a
+    // deployment ID. A pending/ambiguous create remains checking or error.
+    else if (state.replacementDeploymentId) status = "starting";
     else if (state.lastHealthyAt && (!state.lastCheckAt || state.lastHealthyAt >= state.lastCheckAt)) status = "operational";
     return {
       status,
       checkedAt: state.lastCheckAt,
       reason: state.publicReason ?? null,
+      failureCount: Math.min(Math.max(Number(state.consecutiveFailures) || 0, 0), failureThreshold),
+      failureThreshold,
+      deploymentAccepted: Boolean(state.replacementDeploymentId),
     };
   }
 
