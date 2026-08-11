@@ -36,16 +36,18 @@ export function nextWakeAt(state, now) {
 }
 
 export function deploymentStatus(body) {
-  const candidates = [
-    body?.current_status,
-    body?.status,
-    body?.status?.current_status,
-    body?.status?.status,
-    body?.data?.current_status,
-    body?.data?.status,
-  ];
-  const value = candidates.find(candidate => typeof candidate === "string");
-  return String(value ?? "").toUpperCase();
+  const visit = (value, depth = 0) => {
+    if (!value || typeof value !== "object" || depth > 5) return "";
+    for (const key of ["current_status", "status", "state"]) {
+      if (typeof value[key] === "string") return value[key].toUpperCase();
+    }
+    for (const child of Object.values(value)) {
+      const found = visit(child, depth + 1);
+      if (found) return found;
+    }
+    return "";
+  };
+  return visit(body);
 }
 
 function deploymentList(body) {
@@ -58,6 +60,26 @@ function deploymentList(body) {
 
 function deploymentId(item) {
   return item?.request_id ?? item?.requestId ?? item?.id ?? null;
+}
+
+export function deploymentApplication(item) {
+  const visit = (value, depth = 0) => {
+    if (!value || typeof value !== "object" || depth > 5) return "";
+    for (const key of ["application", "app_name", "app"]) {
+      if (typeof value[key] === "string") return value[key];
+      if (value[key] && typeof value[key] === "object") {
+        for (const nameKey of ["name", "app_name", "application_name"]) {
+          if (typeof value[key][nameKey] === "string") return value[key][nameKey];
+        }
+      }
+    }
+    for (const child of Object.values(value)) {
+      const found = visit(child, depth + 1);
+      if (found) return found;
+    }
+    return "";
+  };
+  return visit(item);
 }
 
 function deploymentTags(item) {
@@ -194,16 +216,23 @@ async function startReplacement(env, attemptId) {
   return requestId;
 }
 
-async function listRelevantDeployments(env) {
+async function listDeployments(env) {
   requireConfig(env, ["EDGEGAP_APPLICATION", "EDGEGAP_VERSION", "EDGEGAP_TOKEN"]);
   const body = await edgegapRequest(env, "/v1/deployments");
-  return deploymentList(body).filter(item => {
-    const application = item?.application ?? item?.app_name ?? item?.app;
-    // All live versions of the app are conflicts because they share one tunnel.
-    // Filtering only the target version could miss an older/manual deployment and
-    // create split-brain traffic.
-    return application === env.EDGEGAP_APPLICATION && isLiveDeployment(item);
-  });
+  return deploymentList(body);
+}
+
+async function listRelevantDeployments(env) {
+  const candidates = (await listDeployments(env)).filter(isLiveDeployment);
+  const detailed = await Promise.all(candidates.map(async item => {
+    const id = deploymentId(item);
+    if (!id) throw new Error("Edgegap returned a live deployment without a request ID");
+    return edgegapRequest(env, `/v1/status/${encodeURIComponent(id)}`);
+  }));
+  // The list endpoint omits application/version fields, so hydrate each live
+  // candidate before enforcing the app-wide singleton invariant.
+  return detailed.filter(item =>
+    deploymentApplication(item) === env.EDGEGAP_APPLICATION && isLiveDeployment(item));
 }
 
 export class Watchdog {
@@ -604,6 +633,27 @@ export default {
       result.headers.set("Cache-Control", "no-store");
       result.headers.set("Vary", "Origin");
       return result;
+    }
+
+    if (pathname === "/diagnostic" && request.method === "GET") {
+      if (origin !== allowedOrigin) return new Response("Forbidden", { status: 403 });
+      const listed = await listDeployments(env);
+      const live = await listRelevantDeployments(env);
+      let reason = live.length === 0 ? "no-live-deployment" : live.length > 1 ? "multiple-live-deployments" : "deployment-id-unavailable";
+      if (live.length === 1 && deploymentId(live[0])) {
+        reason = await deploymentDiagnostic(env, deploymentId(live[0]));
+      }
+      return Response.json({
+        listedCount: listed.length,
+        liveCount: live.length,
+        reason,
+      }, {
+        headers: {
+          "Access-Control-Allow-Origin": allowedOrigin,
+          "Cache-Control": "no-store",
+          Vary: "Origin",
+        },
+      });
     }
 
     const supplied = request.headers.get("Authorization");

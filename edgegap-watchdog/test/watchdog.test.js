@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyContainerLogs, deploymentStatus, initialState, nextWakeAt, shouldDeploy } from "../src/index.js";
+import { classifyContainerLogs, deploymentApplication, deploymentStatus, initialState, nextWakeAt, shouldDeploy } from "../src/index.js";
 
 test("requires the configured number of failures", () => {
   const state = initialState();
@@ -35,6 +35,13 @@ test("normalizes Edgegap deployment status", () => {
   assert.equal(deploymentStatus({ current_status: "error" }), "ERROR");
   assert.equal(deploymentStatus({ status: { current_status: "ready" } }), "READY");
   assert.equal(deploymentStatus({ data: { current_status: "deploying" } }), "DEPLOYING");
+  assert.equal(deploymentStatus({ result: { deployment: { status: { state: "ready" } } } }), "READY");
+});
+
+test("finds the application name in flat and nested Edgegap payloads", () => {
+  assert.equal(deploymentApplication({ application: "compersion" }), "compersion");
+  assert.equal(deploymentApplication({ application: { metadata: "ignored" }, details: { app_name: "compersion" } }), "compersion");
+  assert.equal(deploymentApplication({ app: { name: "compersion" } }), "compersion");
 });
 
 test("classifies container failures without returning raw logs", () => {
