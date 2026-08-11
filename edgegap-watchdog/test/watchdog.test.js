@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { deploymentStatus, initialState, shouldDeploy } from "../src/index.js";
+import { classifyContainerLogs, deploymentStatus, initialState, nextWakeAt, shouldDeploy } from "../src/index.js";
 
 test("requires the configured number of failures", () => {
   const state = initialState();
@@ -33,4 +33,19 @@ test("does not deploy while the circuit is open or an attempt is ambiguous", () 
 test("normalizes Edgegap deployment status", () => {
   assert.equal(deploymentStatus({ status: "ready" }), "READY");
   assert.equal(deploymentStatus({ current_status: "error" }), "ERROR");
+  assert.equal(deploymentStatus({ status: { current_status: "ready" } }), "READY");
+  assert.equal(deploymentStatus({ data: { current_status: "deploying" } }), "DEPLOYING");
+});
+
+test("classifies container failures without returning raw logs", () => {
+  assert.equal(classifyContainerLogs({ logs: "CF_TUNNEL_TOKEN must be provided at runtime" }), "missing-tunnel-token");
+  assert.equal(classifyContainerLogs({ logs: "Provided Tunnel token is not valid." }), "tunnel-auth-failed");
+  assert.equal(classifyContainerLogs({ logs: "Mono Assertion failed" }), "unity-runtime-crash");
+});
+
+test("a repeated wake preserves the pending incident alarm", () => {
+  const state = initialState();
+  state.nextCheckNotBefore = 20_000;
+  assert.equal(nextWakeAt(state, 10_000), 20_000);
+  assert.equal(nextWakeAt(state, 30_000), 30_000);
 });

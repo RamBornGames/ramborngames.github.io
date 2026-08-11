@@ -20,6 +20,7 @@ export const initialState = () => ({
   replacementStatusErrors: 0,
   checkErrorCount: 0,
   circuitOpen: false,
+  publicReason: null,
 });
 
 export function shouldDeploy(state, now, failureThreshold, cooldownMs) {
@@ -30,8 +31,21 @@ export function shouldDeploy(state, now, failureThreshold, cooldownMs) {
   return true;
 }
 
+export function nextWakeAt(state, now) {
+  return Math.max(now, state.nextCheckNotBefore ?? 0);
+}
+
 export function deploymentStatus(body) {
-  return String(body?.status ?? body?.current_status ?? "").toUpperCase();
+  const candidates = [
+    body?.current_status,
+    body?.status,
+    body?.status?.current_status,
+    body?.status?.status,
+    body?.data?.current_status,
+    body?.data?.status,
+  ];
+  const value = candidates.find(candidate => typeof candidate === "string");
+  return String(value ?? "").toUpperCase();
 }
 
 function deploymentList(body) {
@@ -49,6 +63,33 @@ function deploymentId(item) {
 function deploymentTags(item) {
   const tags = item?.tags ?? item?.deployment_tags ?? [];
   return Array.isArray(tags) ? tags.map(tag => typeof tag === "string" ? tag : tag?.name).filter(Boolean) : [];
+}
+
+export function classifyContainerLogs(body) {
+  const text = JSON.stringify(body ?? "").toLowerCase();
+  if (text.includes("cf_tunnel_token must be provided")) return "missing-tunnel-token";
+  if (text.includes("provided tunnel token is not valid") ||
+      text.includes("invalid tunnel secret") ||
+      text.includes("tunnel token") && text.includes("unauthorized")) {
+    return "tunnel-auth-failed";
+  }
+  if (text.includes("assertion") && text.includes("mono")) return "unity-runtime-crash";
+  if (text.includes("cloudflared") && (text.includes("exited") || text.includes("fatal"))) {
+    return "tunnel-process-exited";
+  }
+  return "tunnel-unhealthy";
+}
+
+async function deploymentDiagnostic(env, requestId) {
+  try {
+    const logs = await edgegapRequest(
+      env,
+      `/v1/deployment/${encodeURIComponent(requestId)}/container-logs`,
+    );
+    return classifyContainerLogs(logs);
+  } catch {
+    return "container-logs-unavailable";
+  }
 }
 
 function isLiveDeployment(item) {
@@ -209,6 +250,7 @@ export class Watchdog {
     return {
       status,
       checkedAt: state.lastCheckAt,
+      reason: state.publicReason ?? null,
     };
   }
 
@@ -217,7 +259,9 @@ export class Watchdog {
     // Accept the visitor quickly and let the Durable Object alarm perform the
     // potentially slow socket/API reconciliation. Repeated wakes only replace
     // this singleton alarm; they cannot run concurrent deployment checks.
-    if (!state.circuitOpen) await this.ctx.storage.setAlarm(Date.now());
+    if (!state.circuitOpen) {
+      await this.ctx.storage.setAlarm(nextWakeAt(state, Date.now()));
+    }
     return state;
   }
 
@@ -240,7 +284,12 @@ export class Watchdog {
       requireConfig(this.env);
       const now = Date.now();
       state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
-      if (state.nextCheckNotBefore && now < state.nextCheckNotBefore) return state;
+      if (state.nextCheckNotBefore && now < state.nextCheckNotBefore) {
+        // A visitor wake may arrive while an incident alarm is already pending.
+        // Preserve that reservation instead of consuming it with a skipped check.
+        await this.ctx.storage.setAlarm(state.nextCheckNotBefore);
+        return state;
+      }
 
       // All callers (visitor wakes, alarms, and authenticated checks) share one
       // durable reservation. This prevents a wake arriving just after an alarm
@@ -301,6 +350,7 @@ export class Watchdog {
         state.lastHealthyAt = now;
         state.lastError = null;
         state.circuitOpen = false;
+        state.publicReason = null;
       } else {
         state.consecutiveFailures += 1;
         state.lastError = "Public multiplayer health check failed";
@@ -465,6 +515,10 @@ export class Watchdog {
       return;
     }
     const status = deploymentStatus(details);
+    const safeStatuses = new Set(["REQUESTED", "SEEKING", "DEPLOYING", "READY", "ERROR", "TERMINATED", "STOPPED"]);
+    state.publicReason = safeStatuses.has(status)
+      ? `edgegap-${status.toLowerCase()}`
+      : "edgegap-status-unknown";
 
     if (status === "READY") {
       // The container is expected to attach to the same Cloudflare Tunnel. Verify the
@@ -479,9 +533,11 @@ export class Watchdog {
         state.phase = "monitoring";
         state.lastHealthyAt = now;
         state.lastError = null;
+        state.publicReason = null;
         console.log("Replacement is healthy", state.activeDeploymentId);
       } else {
         state.lastError = "Replacement is READY, but the public health check still fails; verify Cloudflare Tunnel routing";
+        state.publicReason = await deploymentDiagnostic(this.env, state.replacementDeploymentId);
         if (now - state.replacementStartedAt > timeout) {
           state.lastError += "; recovery timed out and may be retried after the cooldown";
           state.replacementDeploymentId = null;
@@ -525,7 +581,7 @@ export default {
 
     if (pathname === "/wake" && request.method === "POST") {
       if (origin !== allowedOrigin) return new Response("Forbidden", { status: 403 });
-      const id = env.WATCHDOG.idFromName("compersion-primary-v3");
+      const id = env.WATCHDOG.idFromName("compersion-primary-v4");
       // Await only the Durable Object's durable alarm reservation. Health and
       // Edgegap API work runs from that alarm, keeping the visitor response fast.
       await env.WATCHDOG.get(id).fetch("https://watchdog.internal/wake", { method: "POST" });
@@ -541,7 +597,7 @@ export default {
 
     if (pathname === "/status" && request.method === "GET") {
       if (origin !== allowedOrigin) return new Response("Forbidden", { status: 403 });
-      const id = env.WATCHDOG.idFromName("compersion-primary-v3");
+      const id = env.WATCHDOG.idFromName("compersion-primary-v4");
       const response = await env.WATCHDOG.get(id).fetch("https://watchdog.internal/public-status");
       const result = new Response(response.body, response);
       result.headers.set("Access-Control-Allow-Origin", allowedOrigin);
@@ -555,7 +611,7 @@ export default {
       return new Response("Unauthorized", { status: 401 });
     }
     if (!["/admin/status", "/admin/check", "/admin/reset"].includes(pathname)) return new Response("Not found", { status: 404 });
-    const id = env.WATCHDOG.idFromName("compersion-primary-v3");
+    const id = env.WATCHDOG.idFromName("compersion-primary-v4");
     const internalPath = pathname === "/admin/check" ? "/check" : pathname === "/admin/reset" ? "/reset" : "/status";
     return env.WATCHDOG.get(id).fetch(`https://watchdog.internal${internalPath}`, {
       method: ["/check", "/reset"].includes(internalPath) ? "POST" : "GET",
