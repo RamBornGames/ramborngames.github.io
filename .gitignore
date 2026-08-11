@@ -33,6 +33,9 @@ jspm_packages/
 
 # dotenv environment variables file
 .env
+.dev.vars
+.dev.vars.*
+.wrangler/
 
 # Mac system files
 .DS_Store
