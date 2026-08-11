@@ -18,6 +18,7 @@ export const initialState = () => ({
   deploymentAttempts: [],
   pendingAttemptId: null,
   replacementStatusErrors: 0,
+  checkErrorCount: 0,
   circuitOpen: false,
 });
 
@@ -31,6 +32,30 @@ export function shouldDeploy(state, now, failureThreshold, cooldownMs) {
 
 export function deploymentStatus(body) {
   return String(body?.status ?? body?.current_status ?? "").toUpperCase();
+}
+
+function deploymentList(body) {
+  if (Array.isArray(body)) return body;
+  for (const key of ["data", "deployments", "results"]) {
+    if (Array.isArray(body?.[key])) return body[key];
+  }
+  throw new Error("Edgegap deployment list returned an unexpected shape");
+}
+
+function deploymentId(item) {
+  return item?.request_id ?? item?.requestId ?? item?.id ?? null;
+}
+
+function deploymentTags(item) {
+  const tags = item?.tags ?? item?.deployment_tags ?? [];
+  return Array.isArray(tags) ? tags.map(tag => typeof tag === "string" ? tag : tag?.name).filter(Boolean) : [];
+}
+
+function isLiveDeployment(item) {
+  // ERROR is not proof that the container/tunnel process is gone; Edgegap may
+  // retain it while cleanup is pending. Only terminal stop states are safe for
+  // singleton replacement decisions.
+  return !["TERMINATED", "STOPPED"].includes(deploymentStatus(item));
 }
 
 function positiveNumber(value, fallback) {
@@ -128,6 +153,18 @@ async function startReplacement(env, attemptId) {
   return requestId;
 }
 
+async function listRelevantDeployments(env) {
+  requireConfig(env, ["EDGEGAP_APPLICATION", "EDGEGAP_VERSION", "EDGEGAP_TOKEN"]);
+  const body = await edgegapRequest(env, "/v1/deployments");
+  return deploymentList(body).filter(item => {
+    const application = item?.application ?? item?.app_name ?? item?.app;
+    // All live versions of the app are conflicts because they share one tunnel.
+    // Filtering only the target version could miss an older/manual deployment and
+    // create split-brain traffic.
+    return application === env.EDGEGAP_APPLICATION && isLiveDeployment(item);
+  });
+}
+
 export class Watchdog {
   constructor(ctx, env) {
     this.ctx = ctx;
@@ -140,6 +177,11 @@ export class Watchdog {
     if (url.pathname === "/public-status") {
       const state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
       return Response.json(this.publicState(state));
+    }
+    if (url.pathname === "/reset" && request.method === "POST") {
+      await this.ctx.storage.deleteAlarm();
+      await this.ctx.storage.deleteAll();
+      return Response.json({ reset: true });
     }
     if (url.pathname === "/status") {
       return Response.json(await this.ctx.storage.get(STATE_KEY) ?? initialState());
@@ -171,14 +213,6 @@ export class Watchdog {
   }
 
   async wake() {
-    const now = Date.now();
-    const interval = positiveNumber(this.env.MIN_CHECK_INTERVAL_SECONDS, 60) * 1000;
-    const state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
-    if (state.nextCheckNotBefore && now < state.nextCheckNotBefore) return state;
-
-    // Reserve the interval durably before yielding to external network requests.
-    state.nextCheckNotBefore = now + interval;
-    await this.ctx.storage.put(STATE_KEY, state);
     return this.check();
   }
 
@@ -196,10 +230,19 @@ export class Watchdog {
   async check() {
     if (this.running) return { skipped: true, reason: "check already running" };
     this.running = true;
+    let state;
     try {
       requireConfig(this.env);
       const now = Date.now();
-      const state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
+      state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
+      if (state.nextCheckNotBefore && now < state.nextCheckNotBefore) return state;
+
+      // All callers (visitor wakes, alarms, and authenticated checks) share one
+      // durable reservation. This prevents a wake arriving just after an alarm
+      // from accelerating the failure threshold or issuing duplicate API calls.
+      const interval = positiveNumber(this.env.MIN_CHECK_INTERVAL_SECONDS, 60) * 1000;
+      state.nextCheckNotBefore = now + interval;
+      await this.ctx.storage.put(STATE_KEY, state);
       if (!state.initialized) {
         state.initialized = true;
         if (this.env.INITIAL_DEPLOYMENT_ID && !String(this.env.INITIAL_DEPLOYMENT_ID).startsWith("REPLACE_WITH_")) {
@@ -212,8 +255,21 @@ export class Watchdog {
       // the attempt but before saving Edgegap's deployment ID, stop all alarms
       // and require reconciliation instead of retrying or polling forever.
       if (state.pendingAttemptId && !state.replacementDeploymentId) {
-        state.circuitOpen = true;
-        state.lastError = `Deployment attempt ${state.pendingAttemptId} has an unknown outcome; reconcile its Edgegap tag manually`;
+        const matches = (await listRelevantDeployments(this.env))
+          .filter(item => deploymentTags(item).includes(state.pendingAttemptId));
+        if (matches.length === 1 && deploymentId(matches[0])) {
+          state.replacementDeploymentId = deploymentId(matches[0]);
+          state.replacementStartedAt = state.lastDeploymentAt ?? now;
+          state.pendingAttemptId = null;
+          state.phase = "starting";
+          state.lastError = "Recovered an interrupted deployment request by its unique tag";
+        } else {
+          state.circuitOpen = true;
+          state.lastError = matches.length > 1
+            ? `Multiple deployments matched attempt ${state.pendingAttemptId}; manual review required`
+            : `Deployment attempt ${state.pendingAttemptId} has an unknown outcome; no retry will occur`;
+        }
+        state.checkErrorCount = 0;
         await this.ctx.storage.put(STATE_KEY, state);
         await this.updateAlarm(state);
         return state;
@@ -221,6 +277,7 @@ export class Watchdog {
 
       if (state.phase === "stopping") {
         await this.observeStop(state, now);
+        state.checkErrorCount = 0;
         await this.ctx.storage.put(STATE_KEY, state);
         await this.updateAlarm(state);
         return state;
@@ -228,6 +285,7 @@ export class Watchdog {
 
       if (state.replacementDeploymentId) {
         await this.observeReplacement(state, now);
+        state.checkErrorCount = 0;
         await this.ctx.storage.put(STATE_KEY, state);
         await this.updateAlarm(state);
         return state;
@@ -252,14 +310,22 @@ export class Watchdog {
           }
         }
       }
+      state.checkErrorCount = 0;
       await this.ctx.storage.put(STATE_KEY, state);
       await this.updateAlarm(state);
       return state;
     } catch (error) {
       console.error("Watchdog check failed", error);
-      const state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
+      state ??= await this.ctx.storage.get(STATE_KEY) ?? initialState();
       state.lastCheckAt = Date.now();
       state.lastError = error instanceof Error ? error.message : String(error);
+      state.checkErrorCount = (state.checkErrorCount ?? 0) + 1;
+      const deterministic = (error instanceof EdgegapRequestError && [400, 401, 403].includes(error.status)) ||
+        /Missing required configuration|unexpected shape/.test(state.lastError);
+      if (deterministic || state.checkErrorCount >= 3) {
+        state.circuitOpen = true;
+        state.lastError = `${state.lastError}; automatic checks stopped for manual review`;
+      }
       await this.ctx.storage.put(STATE_KEY, state);
       await this.updateAlarm(state);
       return state;
@@ -270,9 +336,25 @@ export class Watchdog {
 
   async beginSingletonRecovery(state, now) {
     requireConfig(this.env, ["EDGEGAP_TOKEN", "EDGEGAP_APPLICATION", "EDGEGAP_VERSION"]);
-    if (!state.activeDeploymentId) {
+    // Never trust a cached deployment ID when deciding whether it is safe to
+    // create. Reconcile the complete live app set first so stale state cannot
+    // hide a second manual/older-version deployment.
+    const live = await listRelevantDeployments(this.env);
+    if (live.length > 1) {
       state.circuitOpen = true;
-      state.lastError = "No active deployment ID is known; refusing to start a second server";
+      state.lastError = "Multiple live deployments exist; refusing automatic singleton recovery";
+      return;
+    }
+    if (live.length === 1) {
+      state.activeDeploymentId = deploymentId(live[0]);
+      if (!state.activeDeploymentId) {
+        state.circuitOpen = true;
+        state.lastError = "Edgegap returned a live deployment without a request ID";
+        return;
+      }
+    } else {
+      state.activeDeploymentId = null;
+      await this.startSingletonReplacement(state, now);
       return;
     }
 
@@ -306,7 +388,7 @@ export class Watchdog {
     try {
       const details = await edgegapRequest(this.env, `/v1/status/${encodeURIComponent(state.stoppingDeploymentId)}`);
       const status = deploymentStatus(details);
-      if (["ERROR", "TERMINATED", "STOPPED"].includes(status)) {
+      if (["TERMINATED", "STOPPED"].includes(status)) {
         await this.startSingletonReplacement(state, now);
       } else {
         state.lastError = `Waiting for old deployment to stop (status: ${status || "unknown"})`;
@@ -465,11 +547,11 @@ export default {
     if (!env.ADMIN_TOKEN || supplied !== `Bearer ${env.ADMIN_TOKEN}`) {
       return new Response("Unauthorized", { status: 401 });
     }
-    if (!["/admin/status", "/admin/check"].includes(pathname)) return new Response("Not found", { status: 404 });
+    if (!["/admin/status", "/admin/check", "/admin/reset"].includes(pathname)) return new Response("Not found", { status: 404 });
     const id = env.WATCHDOG.idFromName("compersion-primary");
-    const internalPath = pathname === "/admin/check" ? "/check" : "/status";
+    const internalPath = pathname === "/admin/check" ? "/check" : pathname === "/admin/reset" ? "/reset" : "/status";
     return env.WATCHDOG.get(id).fetch(`https://watchdog.internal${internalPath}`, {
-      method: internalPath === "/check" ? "POST" : "GET",
+      method: ["/check", "/reset"].includes(internalPath) ? "POST" : "GET",
     });
   },
 };
