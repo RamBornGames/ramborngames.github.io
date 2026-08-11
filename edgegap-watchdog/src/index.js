@@ -31,6 +31,12 @@ export function shouldDeploy(state, now, failureThreshold, cooldownMs) {
   return true;
 }
 
+export function singletonRecoveryDecision(liveCount) {
+  if (liveCount === 0) return "create";
+  if (liveCount === 1) return "preserve";
+  return "ambiguous";
+}
+
 export function nextWakeAt(state, now) {
   return Math.max(now, state.nextCheckNotBefore ?? 0);
 }
@@ -383,7 +389,13 @@ export class Watchdog {
       }
 
       if (state.phase === "stopping") {
-        await this.observeStop(state, now);
+        // Older Worker versions could enter an automatic stop-and-replace
+        // phase. Never resume that behavior after this policy change.
+        state.phase = "monitoring";
+        state.stoppingDeploymentId = null;
+        state.stopRequestedAt = null;
+        state.circuitOpen = true;
+        state.lastError = "Legacy automatic-restart state was cancelled; manual review required";
         state.checkErrorCount = 0;
         await this.ctx.storage.put(STATE_KEY, state);
         await this.updateAlarm(state);
@@ -448,67 +460,28 @@ export class Watchdog {
     // create. Reconcile the complete live app set first so stale state cannot
     // hide a second manual/older-version deployment.
     const live = await listRelevantDeployments(this.env);
-    if (live.length > 1) {
+    const decision = singletonRecoveryDecision(live.length);
+    if (decision === "ambiguous") {
       state.circuitOpen = true;
       state.lastError = "Multiple live deployments exist; refusing automatic singleton recovery";
       return;
     }
-    if (live.length === 1) {
+    if (decision === "preserve") {
       state.activeDeploymentId = deploymentId(live[0]);
       if (!state.activeDeploymentId) {
         state.circuitOpen = true;
         state.lastError = "Edgegap returned a live deployment without a request ID";
         return;
       }
-    } else {
-      state.activeDeploymentId = null;
-      await this.startSingletonReplacement(state, now);
-      return;
-    }
-
-    state.phase = "stopping";
-    state.stoppingDeploymentId = state.activeDeploymentId;
-    state.stopRequestedAt = now;
-    await this.ctx.storage.put(STATE_KEY, state);
-    try {
-      await edgegapRequest(this.env, `/v1/stop/${encodeURIComponent(state.stoppingDeploymentId)}`, { method: "DELETE" });
-      state.lastError = "Unhealthy deployment is stopping before singleton replacement";
-    } catch (error) {
-      // 410 means Edgegap already terminated it. Other outcomes are resolved by the
-      // status poll; never start a replacement merely because the stop response failed.
-      if (error instanceof EdgegapRequestError && error.status === 410) {
-        await this.startSingletonReplacement(state, now);
-      } else {
-        state.lastError = "Stop request outcome is uncertain; waiting for Edgegap status confirmation";
-        console.error(state.lastError, error);
-      }
-    }
-  }
-
-  async observeStop(state, now) {
-    const stopTimeout = positiveNumber(this.env.STOP_TIMEOUT_SECONDS, 300) * 1000;
-    if (!state.stoppingDeploymentId || now - state.stopRequestedAt > stopTimeout) {
+      state.phase = "monitoring";
       state.circuitOpen = true;
-      state.lastError = "Old deployment did not reach a confirmed stopped state; refusing to start another server";
+      state.publicReason = "live-deployment-unhealthy";
+      state.lastError = "A live deployment exists but public multiplayer health failed; automatic restart is disabled";
       return;
     }
 
-    try {
-      const details = await edgegapRequest(this.env, `/v1/status/${encodeURIComponent(state.stoppingDeploymentId)}`);
-      const status = deploymentStatus(details);
-      if (["TERMINATED", "STOPPED"].includes(status)) {
-        await this.startSingletonReplacement(state, now);
-      } else {
-        state.lastError = `Waiting for old deployment to stop (status: ${status || "unknown"})`;
-      }
-    } catch (error) {
-      if (error instanceof EdgegapRequestError && [404, 410].includes(error.status)) {
-        await this.startSingletonReplacement(state, now);
-      } else {
-        state.lastError = "Unable to confirm that the old deployment stopped; no replacement will start yet";
-        console.error(state.lastError, error);
-      }
-    }
+    state.activeDeploymentId = null;
+    await this.startSingletonReplacement(state, now);
   }
 
   async startSingletonReplacement(state, now) {

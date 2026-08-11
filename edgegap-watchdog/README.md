@@ -5,8 +5,8 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs t
 ## Assumptions and safety behavior
 
 - This is a strict singleton design: everyone connects to one persistent server.
-- After three failures, the watchdog asks Edgegap to stop the known active deployment and waits for confirmed termination before creating a replacement. It never intentionally runs two production deployments against the shared Cloudflare Tunnel.
-- This creates a short outage and disconnects current players during recovery, but prevents split-brain game state.
+- After three failures, the watchdog reconciles every live deployment for the application. It creates one server only when Edgegap reports zero live deployments.
+- If one live deployment exists but the public WebSocket is unhealthy, the watchdog preserves it, opens its circuit, and asks for manual review. It never automatically stops or restarts a server. More than one live deployment also opens the circuit.
 - Health is intentionally the same direct WebSocket handshake introduced by commit `763e6fb`: open `wss://compersion.charliefeuerborn.com` and require it to connect. This verifies the browser-to-Cloudflare-to-tunnel-to-Bayou path without requiring a separate Unity readiness endpoint.
 - Production is intentionally parked with `ENABLE_DEPLOYMENTS=false` after the 2026-08-11 controlled launch proved that the Cloudflare connector could become healthy but the uploaded Unity image did not expose Bayou on localhost:7771. Keep deployment creation disabled until a corrected image passes one controlled launch. Before changing or redeploying this Worker, verify the stable Edgegap version, placement, secrets, tunnel route, and that no more than one application-wide deployment is live.
 - Hard hourly/daily attempt caps and an ambiguity circuit breaker limit deployment storms.
@@ -55,7 +55,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs t
 
 ## Recovery timing
 
-With the included settings, a homepage visit wakes the Worker. If that check fails, alarms perform two subsequent checks about five seconds apart. After three failures, singleton recovery stops the known server, waits up to five minutes for confirmed termination, and then creates one replacement. The replacement has ten minutes to become `READY` and reconnect the public WebSocket. Cooldowns, attempt caps, durable attempt IDs, and a circuit breaker limit retries.
+With the included settings, a homepage visit wakes the Worker. If that check fails, alarms perform two subsequent checks about five seconds apart. After three failures, singleton recovery lists all live application deployments. It creates one server only if that list is empty. An existing unhealthy server is left untouched and opens the circuit for manual review. A newly created server has ten minutes to become `READY` and reconnect the public WebSocket. Cooldowns, attempt caps, durable attempt IDs, and a circuit breaker limit retries.
 
 `GET /watchdog/status` reports the real durable `failureCount` and configured `failureThreshold`; the homepage renders these as **Checking server (1/3)**, for example. **Server booting** is returned only after Edgegap accepts the create request and supplies a deployment ID. Browser polling controls when the display observes a state, but it does not advance the state machine.
 

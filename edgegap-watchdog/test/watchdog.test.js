@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyContainerLogs, deploymentApplication, deploymentStatus, initialState, nextWakeAt, shouldDeploy, Watchdog } from "../src/index.js";
+import { classifyContainerLogs, deploymentApplication, deploymentStatus, initialState, nextWakeAt, shouldDeploy, singletonRecoveryDecision, Watchdog } from "../src/index.js";
 
 test("requires the configured number of failures", () => {
   const state = initialState();
@@ -28,6 +28,12 @@ test("does not deploy while the circuit is open or an attempt is ambiguous", () 
   state.circuitOpen = false;
   state.pendingAttemptId = "wd-ambiguous";
   assert.equal(shouldDeploy(state, 10_000, 3, 1_000), false);
+});
+
+test("creates only when no live deployment exists and never restarts a singleton", () => {
+  assert.equal(singletonRecoveryDecision(0), "create");
+  assert.equal(singletonRecoveryDecision(1), "preserve");
+  assert.equal(singletonRecoveryDecision(2), "ambiguous");
 });
 
 test("normalizes Edgegap deployment status", () => {
