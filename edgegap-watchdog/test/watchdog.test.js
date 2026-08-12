@@ -84,3 +84,21 @@ test("public status counts checks and only reports booting after Edgegap accepts
   assert.equal(watchdog.publicState(state).status, "starting");
   assert.equal(watchdog.publicState(state).deploymentAccepted, true);
 });
+
+test("a deliberate config generation clears parked state on the next visitor wake", async () => {
+  let stored = { ...initialState(), circuitOpen: true, consecutiveFailures: 3 };
+  let alarmAt = null;
+  const ctx = {
+    storage: {
+      get: async () => stored,
+      put: async (_key, value) => { stored = value; },
+      setAlarm: async value => { alarmAt = value; },
+    },
+  };
+  const watchdog = new Watchdog(ctx, { CONFIG_GENERATION: "tunnel-fixed" });
+  const result = await watchdog.wake();
+  assert.equal(result.configGeneration, "tunnel-fixed");
+  assert.equal(result.circuitOpen, false);
+  assert.equal(result.consecutiveFailures, 0);
+  assert.equal(typeof alarmAt, "number");
+});

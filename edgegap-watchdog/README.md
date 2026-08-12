@@ -8,7 +8,7 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs t
 - After three failures, the watchdog reconciles every live deployment for the application. It creates one server only when Edgegap reports zero live deployments.
 - If one live deployment exists but the public WebSocket is unhealthy, the watchdog preserves it, opens its circuit, and asks for manual review. It never automatically stops or restarts a server. More than one live deployment also opens the circuit.
 - Health is intentionally the same direct WebSocket handshake introduced by commit `763e6fb`: open `wss://compersion.charliefeuerborn.com` and require it to connect. This verifies the browser-to-Cloudflare-to-tunnel-to-Bayou path without requiring a separate Unity readiness endpoint.
-- Production is intentionally parked with `ENABLE_DEPLOYMENTS=false` after the 2026-08-11 controlled launch proved that the Cloudflare connector could become healthy but the uploaded Unity image did not expose Bayou on localhost:7771. Keep deployment creation disabled until a corrected image passes one controlled launch. Before changing or redeploying this Worker, verify the stable Edgegap version, placement, secrets, tunnel route, and that no more than one application-wide deployment is live.
+- Production deployment creation was re-enabled on 2026-08-12 after the tunnel fix and an application-wide reconciliation confirmed zero live deployments. Before changing or redeploying this Worker, verify the stable Edgegap version, placement, secrets, tunnel route, and that no more than one application-wide deployment is live.
 - Hard hourly/daily attempt caps and an ambiguity circuit breaker limit deployment storms.
 - The API token is stored as a Worker secret and never sent to the website.
 - The Cloudflare Tunnel token is injected into the Edgegap app version as the secret environment variable `CF_TUNNEL_TOKEN`; it is not baked into the container image.
@@ -60,6 +60,8 @@ With the included settings, a homepage visit wakes the Worker. If that check fai
 `GET /watchdog/status` reports the real durable `failureCount` and configured `failureThreshold`; the homepage renders these as **Checking server (1/3)**, for example. **Server booting** is returned only after Edgegap accepts the create request and supplies a deployment ID. Browser polling controls when the display observes a state, but it does not advance the state machine.
 
 This behavior is gated by `ENABLE_DEPLOYMENTS`. When it is `false`, checks fail closed without creating a server. Changing the tracked value is not enough: deploy the Worker deliberately, then confirm the binding shown by Wrangler.
+
+`CONFIG_GENERATION` deliberately clears parked Durable Object state on the next visitor wake after an operator has reconciled Edgegap. Do not change it casually: first confirm the complete application-wide live deployment count and pending create outcome.
 
 ## Connect the homepage
 

@@ -26,7 +26,8 @@
   "vars": {
     "HEALTH_URL": "wss://compersion.charliefeuerborn.com",
     "PUBLIC_ORIGIN": "https://ramborngames.github.io",
-    "ENABLE_DEPLOYMENTS": "false",
+    "ENABLE_DEPLOYMENTS": "true",
+    "CONFIG_GENERATION": "2026-08-12-tunnel-fixed",
     "INITIAL_DEPLOYMENT_ID": "",
     "EDGEGAP_APPLICATION": "compersion",
     "EDGEGAP_VERSION": "26.08.11-watchdog-secure",

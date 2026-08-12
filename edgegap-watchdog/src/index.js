@@ -2,6 +2,7 @@ const EDGEGAP_API = "https://api.edgegap.com";
 const STATE_KEY = "state";
 
 export const initialState = () => ({
+  configGeneration: null,
   initialized: false,
   phase: "monitoring",
   consecutiveFailures: 0,
@@ -314,7 +315,15 @@ export class Watchdog {
   }
 
   async wake() {
-    const state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
+    let state = await this.ctx.storage.get(STATE_KEY) ?? initialState();
+    // A deliberate generation bump clears parked state on the next visitor
+    // wake. Operators must reconcile Edgegap before changing this value.
+    const generation = String(this.env.CONFIG_GENERATION ?? "");
+    if (state.configGeneration !== generation) {
+      state = initialState();
+      state.configGeneration = generation;
+      await this.ctx.storage.put(STATE_KEY, state);
+    }
     // Accept the visitor quickly and let the Durable Object alarm perform the
     // potentially slow socket/API reconciliation. Repeated wakes only replace
     // this singleton alarm; they cannot run concurrent deployment checks.
