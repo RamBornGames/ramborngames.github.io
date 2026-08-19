@@ -229,13 +229,13 @@ a:focus-visible {
   height: auto;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  transform: translate(7%, 5.1%);
+  transform: translate(-2.2%, -7.8%);
   transition: transform 120ms ease;
 }
 
 .squirrel-link:hover img,
 .squirrel-link:focus-visible img {
-  transform: translate(7%, calc(5.1% - 4px)) rotate(-2deg);
+  transform: translate(-2.2%, calc(-7.8% - 4px)) rotate(-2deg);
 }
 
 .squirrel-caption {

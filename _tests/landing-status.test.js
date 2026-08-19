@@ -79,7 +79,7 @@ test("loads and starts the status bootstrap before presentation assets", () => {
   assert.ok(html.includes('id="multiplayer-status"'));
   assert.ok(html.includes('id="multiplayer-help"'));
   assert.ok(html.indexOf(probeTag) < html.indexOf(scriptTag));
-  assert.ok(html.indexOf(scriptTag) < html.indexOf('<link rel="stylesheet" href="styles.css?v=20260818-4">'));
+  assert.ok(html.indexOf(scriptTag) < html.indexOf('<link rel="stylesheet" href="styles.css?v=20260818-5">'));
   assert.match(html, /__compersionSocketProbe=new Promise[\s\S]*new WebSocket\("wss:\/\/compersion\.charliefeuerborn\.com"\)[\s\S]*5000/);
   assert.match(source, /\(async\(\)=>\{let data=await checkLiveStatus\(\);saveHistory\(data\);renderStatus\(data\);if\(data\.current==="waking"\)followStartup\(data\.history\)\}\)\(\);\s*$/);
 });
