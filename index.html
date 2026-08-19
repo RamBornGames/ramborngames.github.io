@@ -1,26 +1,94 @@
 <!doctype html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ramsey Fireborn Games Portal</title>
-<style>body{font:18px/1.6 system-ui,sans-serif;margin:1rem;max-width:48rem}.url{overflow-wrap:anywhere;word-break:break-word}.status{margin:.15rem 0 .25rem 1rem;font-size:.95em}.bars{letter-spacing:.08em}.bar{font-weight:700}.ok{color:#2fcc66}.degraded{color:#f1c40f}.partial{color:#e67e22}.outage{color:#e74c3c}.maintenance{color:#3498db}@media(max-width:40rem){body{font-size:20px}.url{display:block}.status{margin-left:0}}</style>
-<p><a href="https://ramborngames.github.io/compersion/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Polyamory Game (Compersion)</a><br><span id="multiplayer-status" class="status">Multiplayer Server Status: <span class="outage">Down</span> <span class="bars outage">||||||||||||||</span></span><br><span id="multiplayer-help" class="status">If multiplayer is down, contact support@ramseyfireborngames.com to let us know. The game is still playable in singleplayer.</span><br><span class="url">https://ramborngames.github.io/compersion/</span><br>
-<a href="/unscene/">UNSCENE Compersion Article, Extended Cut</a> <span class="url">https://ramborngames.github.io/unscene/</span><br>
-<a href="https://ramseyfireborngames.com/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Studio Website</a> <span class="url">https://ramseyfireborngames.com/</span><br>
-<a href="https://www.patreon.com/RamseyFirebornGames" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Support us on Patreon</a> <span class="url">https://www.patreon.com/RamseyFirebornGames</span><br>
-<a href="https://forms.gle/hxLfkX4au94oon1B8" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Sign up for our mailing list</a> <span class="url">https://forms.gle/hxLfkX4au94oon1B8</span></p>
-<footer>
-  <img src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Framborngames.github.io%2F&amp;label=VISITORS&amp;icon=fire&amp;color=%23198754&amp;message=&amp;style=flat&amp;tz=UTC" alt="Visitor count">
-</footer>
-<script>
-const STATUS_SOCKET="wss://compersion.charliefeuerborn.com";
-const WATCHDOG_WAKE="https://compersion.charliefeuerborn.com/watchdog/wake";
-const states={ok:["Operational","ok"],operational:["Operational","ok"],waking:["Wake request sent","maintenance"],checking:["Checking server","maintenance"],stopping:["Restarting server","maintenance"],starting:["Server booting","maintenance"],error:["Startup needs attention","outage"],degraded:["Degraded Performance","degraded"],partial:["Partial Outage","partial"],outage:["Down","outage"],maintenance:["Maintenance","maintenance"]};
-const fallback={current:"outage",history:Array.from({length:14},(_,i)=>({state:"outage",label:`${14-i} day(s) ago: full outage.`}))};
-function readHistory(){try{return JSON.parse(decodeURIComponent((document.cookie.match(/(?:^|; )compersion_status=([^;]*)/)||[])[1]||""))||fallback}catch{return fallback}}
-function saveHistory(data){document.cookie="compersion_status="+encodeURIComponent(JSON.stringify(data))+"; max-age=7776000; path=/; SameSite=Lax"}
-function checkSocketStatus(){return new Promise(resolve=>{let settled=false,socket,timer;function finish(current){if(settled)return;settled=true;clearTimeout(timer);if(socket&&socket.readyState<2)socket.close();resolve(current)}try{socket=new WebSocket(STATUS_SOCKET);timer=setTimeout(()=>finish("outage"),5000);socket.onopen=()=>finish("ok");socket.onerror=()=>finish("outage")}catch{finish("outage")}})}
-async function checkLiveStatus(){let current=await checkSocketStatus(),saved=readHistory(),history=saved.history||fallback.history;if(current==="ok")return{current:"ok",history};let wakeAccepted=false;try{let response=await fetch(WATCHDOG_WAKE,{method:"POST",cache:"no-store"});wakeAccepted=response.status===202}catch{}return{current:wakeAccepted?"waking":"error",history}}
-function renderStatus(data){let host=document.getElementById("multiplayer-status"),help=document.getElementById("multiplayer-help"),state=states[data.current]||states.outage,label=document.createElement("span"),bars=document.createElement("span"),detail="";host.className="status "+state[1];if(data.current==="checking"&&Number.isFinite(data.failureCount)&&Number.isFinite(data.failureThreshold))detail=` (${data.failureCount}/${data.failureThreshold})`;label.textContent=state[0]+detail;bars.className="bars";(data.history||fallback.history).forEach(()=>{let bar=document.createElement("span");bar.className="bar "+state[1];bar.title="Live multiplayer check: "+state[0];bar.setAttribute("aria-label",bar.title);bar.textContent="|";bars.append(bar)});host.replaceChildren("Multiplayer Server Status: ",label," ",bars);help.hidden=['ok','operational'].includes(data.current)}
-async function followStartup(history){let started=Date.now(),deadline=started+660000;while(Date.now()<deadline){let elapsed=Date.now()-started,delay=elapsed<30000?2000:elapsed<120000?5000:20000;await new Promise(resolve=>setTimeout(resolve,delay));if(document.hidden)continue;try{let response=await fetch("https://compersion.charliefeuerborn.com/watchdog/status",{cache:"no-store"});if(!response.ok)continue;let result=await response.json(),current=states[result.status]?result.status:"checking";if(current==="operational"&&await checkSocketStatus()!=="ok")current="checking";let data={current,history,failureCount:result.failureCount,failureThreshold:result.failureThreshold};saveHistory(data);renderStatus(data);if(current==="operational"||current==="error")return}catch{}}renderStatus({current:"error",history})}
-(async()=>{let data=await checkLiveStatus();saveHistory(data);renderStatus(data);if(data.current==="waking")followStartup(data.history)})();
-</script>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8efe3">
+  <meta name="description" content="Play Compersion, read the extended article, and find Ramsey Fireborn Games around the web.">
+  <title>Ramsey Fireborn Games — Play, Read &amp; Connect</title>
+  <link rel="preconnect" href="https://compersion.charliefeuerborn.com" crossorigin>
+  <script id="multiplayer-probe">
+    globalThis.__compersionSocketProbe=new Promise(resolve=>{let settled=false,socket,timer;function finish(current){if(settled)return;settled=true;clearTimeout(timer);if(socket&&socket.readyState<2)socket.close();resolve(current)}try{socket=new WebSocket("wss://compersion.charliefeuerborn.com");timer=setTimeout(()=>finish("outage"),5000);socket.onopen=()=>finish("ok");socket.onerror=()=>finish("outage")}catch{finish("outage")}});
+  </script>
+  <script src="script.js?v=20260818-4" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20260818-4">
+</head>
+<body>
+  <main class="page-shell">
+    <div class="page-top">
+      <a class="brand-link" href="https://ramseyfireborngames.com/#contact" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" aria-label="Ramsey Fireborn Games mailing list (opens in a new tab)" title="Ramsey Fireborn Games mailing list">
+        <span class="brand-mark">RFG<span aria-hidden="true">.</span></span>
+      </a>
+    </div>
+
+    <section class="compersion" aria-labelledby="compersion-title">
+      <div class="compersion-card">
+        <div class="compersion-copy">
+          <h1 id="compersion-title" class="compersion-title">Play Compersion</h1>
+          <p class="compersion-description">You play as a flying squirrel delivering love letters between your husband and your husband's new partner.</p>
+          <a class="play-button" href="https://ramborngames.github.io/compersion/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+            <span class="play-label">Play the game <span aria-hidden="true">→</span><span class="sr-only"> (opens in a new tab)</span></span>
+            <span class="link-url">https://ramborngames.github.io/compersion/</span>
+          </a>
+        </div>
+
+        <a class="squirrel-link" href="https://ramborngames.github.io/compersion/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" aria-label="Play Compersion in a new tab">
+          <span class="squirrel-visual">
+            <span class="squirrel-halo" aria-hidden="true"></span>
+            <img src="assets/squirrel-sit.png" width="50" height="49" alt="Pixel-art squirrel carrying a love letter">
+          </span>
+          <span class="squirrel-caption">Tap the squirrel to play</span>
+        </a>
+      </div>
+
+      <div class="status-region">
+        <p class="status-heading">Live multiplayer</p>
+        <p id="multiplayer-status" class="status maintenance" role="status" aria-live="polite" aria-atomic="true">
+          Multiplayer server status: <span>Connecting…</span>
+          <span class="bars" aria-hidden="true"><span class="bar">|</span></span>
+        </p>
+        <p id="multiplayer-help" class="status-help" hidden>If multiplayer startup needs attention, the game is still playable in singleplayer. Please email <a href="mailto:support@ramseyfireborngames.com">support@ramseyfireborngames.com</a> so we can help.</p>
+        <noscript><p class="status-help">Live multiplayer status needs JavaScript. The game is still playable in singleplayer.</p></noscript>
+      </div>
+    </section>
+
+    <nav class="link-tree" aria-label="Ramsey Fireborn Games links">
+      <a class="link-card article-card" href="https://ramborngames.github.io/unscene/">
+        <span class="link-copy">
+          <span class="link-title">UNSCENE Compersion Article, Extended Cut</span>
+          <span class="link-url">https://ramborngames.github.io/unscene/</span>
+        </span>
+        <span class="link-arrow" aria-hidden="true">→</span>
+      </a>
+
+      <a class="link-card studio-card" href="https://ramseyfireborngames.com/" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+        <span class="link-copy">
+          <span class="link-title">Studio Website<span class="sr-only"> (opens in a new tab)</span></span>
+          <span class="link-url">https://ramseyfireborngames.com/</span>
+        </span>
+        <span class="link-arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a class="link-card support-card" href="https://www.patreon.com/RamseyFirebornGames" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+        <span class="link-copy">
+          <span class="link-title">Support us on Patreon<span class="sr-only"> (opens in a new tab)</span></span>
+          <span class="link-url">https://www.patreon.com/RamseyFirebornGames</span>
+        </span>
+        <span class="link-arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a id="mailing-list" class="link-card mailing-card" href="https://forms.gle/hxLfkX4au94oon1B8" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">
+        <span class="link-copy">
+          <span class="link-title">Sign up for our mailing list<span class="sr-only"> (opens in a new tab)</span></span>
+          <span class="link-url">https://forms.gle/hxLfkX4au94oon1B8</span>
+        </span>
+        <span class="link-arrow" aria-hidden="true">↗</span>
+      </a>
+    </nav>
+  </main>
+
+  <footer class="site-footer">
+    <img src="https://hitscounter.dev/api/hit?url=https%3A%2F%2Framborngames.github.io%2F&amp;label=VISITORS&amp;icon=fire&amp;color=%23E5613A&amp;message=&amp;style=flat&amp;tz=UTC" alt="Visitor count" loading="lazy">
+  </footer>
+</body>
+</html>

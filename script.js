@@ -1,19 +1,12 @@
-(function () {
-  "use strict";
-
-  var year = document.querySelector("[data-year]");
-  if (year) {
-    year.textContent = String(new Date().getFullYear());
-  }
-
-  var links = document.querySelectorAll('a[target="_blank"]');
-  links.forEach(function (link) {
-    link.rel = "noopener noreferrer";
-    link.referrerPolicy = "no-referrer";
-  });
-
-  var statusLine = document.querySelector("[data-status-line]");
-  if (statusLine) {
-    statusLine.textContent = "READY. " + links.length + " SECURE LINKS LOADED.";
-  }
-}());
+const STATUS_SOCKET="wss://compersion.charliefeuerborn.com";
+const WATCHDOG_WAKE="https://compersion.charliefeuerborn.com/watchdog/wake";
+const WATCHDOG_STATUS="https://compersion.charliefeuerborn.com/watchdog/status";
+const states={ok:["Operational — ready to play","ok"],operational:["Operational — ready to play","ok"],waking:["Wake request sent — starting multiplayer","maintenance"],checking:["Checking startup","maintenance"],stopping:["Restarting multiplayer","maintenance"],starting:["Server booting","maintenance"],error:["Startup needs attention","outage"],degraded:["Degraded performance","degraded"],partial:["Partial outage","partial"],outage:["Offline","outage"],maintenance:["Maintenance","maintenance"]};
+const fallback={current:"outage",history:Array.from({length:14},(_,i)=>({state:"outage",label:`${14-i} day(s) ago: full outage.`}))};
+function readHistory(){try{return JSON.parse(decodeURIComponent((document.cookie.match(/(?:^|; )compersion_status=([^;]*)/)||[])[1]||""))||fallback}catch{return fallback}}
+function saveHistory(data){document.cookie="compersion_status="+encodeURIComponent(JSON.stringify(data))+"; max-age=7776000; path=/; SameSite=Lax"}
+function checkSocketStatus(){return new Promise(resolve=>{let settled=false,socket,timer;function finish(current){if(settled)return;settled=true;clearTimeout(timer);if(socket&&socket.readyState<2)socket.close();resolve(current)}try{socket=new WebSocket(STATUS_SOCKET);timer=setTimeout(()=>finish("outage"),5000);socket.onopen=()=>finish("ok");socket.onerror=()=>finish("outage")}catch{finish("outage")}})}
+async function checkLiveStatus(){let current=await(globalThis.__compersionSocketProbe||checkSocketStatus()),saved=readHistory(),history=saved.history||fallback.history;if(current==="ok")return{current:"ok",history};let wakeAccepted=false;try{let response=await fetch(WATCHDOG_WAKE,{method:"POST",cache:"no-store"});wakeAccepted=response.status===202}catch{}return{current:wakeAccepted?"waking":"error",history}}
+function renderStatus(data){let host=document.getElementById("multiplayer-status"),help=document.getElementById("multiplayer-help"),state=states[data.current]||states.outage,label=document.createElement("span"),bars=document.createElement("span"),bar=document.createElement("span"),detail="";host.className="status "+state[1];if(data.current==="checking"&&Number.isFinite(data.failureCount)&&Number.isFinite(data.failureThreshold))detail=` (${data.failureCount}/${data.failureThreshold})`;label.textContent=state[0]+detail;bars.className="bars";bars.setAttribute("aria-hidden","true");bar.className="bar "+state[1];bar.textContent="|";bars.append(bar);host.replaceChildren("Multiplayer server status: ",label," ",bars);help.hidden=!['error','outage'].includes(data.current)}
+async function followStartup(history){let started=Date.now(),deadline=started+660000;while(Date.now()<deadline){let elapsed=Date.now()-started,delay=elapsed<30000?2000:elapsed<120000?5000:20000;await new Promise(resolve=>setTimeout(resolve,delay));if(document.hidden)continue;try{let response=await fetch(WATCHDOG_STATUS,{cache:"no-store"});if(!response.ok)continue;let result=await response.json(),current=states[result.status]?result.status:"checking";if(current==="operational"&&await checkSocketStatus()!=="ok")current="checking";let data={current,history,failureCount:result.failureCount,failureThreshold:result.failureThreshold};saveHistory(data);renderStatus(data);if(current==="operational"||current==="error")return}catch{}}renderStatus({current:"error",history})}
+(async()=>{let data=await checkLiveStatus();saveHistory(data);renderStatus(data);if(data.current==="waking")followStartup(data.history)})();
