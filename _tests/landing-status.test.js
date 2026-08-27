@@ -84,6 +84,17 @@ test("loads and starts the status bootstrap before presentation assets", () => {
   assert.match(source, /\(async\(\)=>\{let data=await checkLiveStatus\(\);saveHistory\(data\);renderStatus\(data\);if\(data\.current==="waking"\)followStartup\(data\.history\)\}\)\(\);\s*$/);
 });
 
+test("publishes a large social card using the Compersion preview image", () => {
+  const previewUrl = "https://ramborngames.github.io/compersion/TemplateData/compersion-social-preview.png?v=2026.08.27.20-196b2b77";
+  assert.ok(html.includes('<link rel="canonical" href="https://ramborngames.github.io/">'));
+  assert.ok(html.includes('<meta property="og:url" content="https://ramborngames.github.io/">'));
+  assert.ok(html.includes(`<meta property="og:image" content="${previewUrl}">`));
+  assert.ok(html.includes('<meta property="og:image:width" content="1200">'));
+  assert.ok(html.includes('<meta property="og:image:height" content="630">'));
+  assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image">'));
+  assert.ok(html.includes(`<meta name="twitter:image" content="${previewUrl}">`));
+});
+
 test("keeps every original destination and label without the extra header copy", () => {
   const originalLinks = [
     ["https://ramborngames.github.io/compersion/", "Play Compersion"],
