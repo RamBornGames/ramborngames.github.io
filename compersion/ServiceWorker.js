@@ -1,13 +1,13 @@
-const version = encodeURIComponent("2026.09.01.10-be945436");
+const version = encodeURIComponent("2026.09.01.20-96974bae");
 const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
 const legacyCachePrefix = "Ramsey Fireborn Games Studio-Compersion-";
 const cacheName = cachePrefix + version;
 const contentToCache = [
     "index.html",
-    "Build/2026.09.01_build1_compersion2d.loader.js?v=" + version,
-    "Build/2026.09.01_build1_compersion2d.framework.js.unityweb?v=" + version,
-    "Build/2026.09.01_build1_compersion2d.data.unityweb?v=" + version,
-    "Build/2026.09.01_build1_compersion2d.wasm.unityweb?v=" + version,
+    "Build/2026.09.01_build2_compersion2d.loader.js?v=" + version,
+    "Build/2026.09.01_build2_compersion2d.framework.js.unityweb?v=" + version,
+    "Build/2026.09.01_build2_compersion2d.data.unityweb?v=" + version,
+    "Build/2026.09.01_build2_compersion2d.wasm.unityweb?v=" + version,
     "TemplateData/style.css?v=" + version,
     "manifest.webmanifest?v=" + version,
     "TemplateData/compersion-favicon-32.png?v=" + version,
