@@ -296,7 +296,7 @@ export class Watchdog {
   }
 
   publicState(state) {
-    const failureThreshold = positiveNumber(this.env.FAILURES_BEFORE_DEPLOY, 3);
+    const failureThreshold = positiveNumber(this.env.FAILURES_BEFORE_DEPLOY, 1);
     let status = "checking";
     if (state.circuitOpen) status = "error";
     else if (state.phase === "stopping") status = "stopping";
@@ -428,7 +428,7 @@ export class Watchdog {
       } else {
         state.consecutiveFailures += 1;
         state.lastError = "Public multiplayer health check failed";
-        const threshold = positiveNumber(this.env.FAILURES_BEFORE_DEPLOY, 3);
+        const threshold = positiveNumber(this.env.FAILURES_BEFORE_DEPLOY, 1);
         const cooldown = positiveNumber(this.env.DEPLOY_COOLDOWN_SECONDS, 900) * 1000;
         if (shouldDeploy(state, now, threshold, cooldown)) {
           if (String(this.env.ENABLE_DEPLOYMENTS).toLowerCase() !== "true") {

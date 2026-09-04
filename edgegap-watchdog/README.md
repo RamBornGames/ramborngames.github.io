@@ -1,11 +1,12 @@
 # Compersion Edgegap watchdog
 
-This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs three serialized cold-start health checks about five seconds apart. After the first failure, a Durable Object alarm continues the incident checks and replacement observation without requiring more visitors; the alarm stops when service is healthy. A SQLite-backed Durable Object stores state and serializes checks.
+This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs one public multiplayer handshake and, if that fails, immediately reconciles Edgegap before deciding whether to create a server. A Durable Object stores state and serializes checks and startup observation.
 
 ## Assumptions and safety behavior
 
 - This is a strict singleton design: everyone connects to one persistent server.
-- After three failures, the watchdog reconciles every live deployment for the application. It creates one server only when Edgegap reports zero live deployments.
+- After one failed handshake, the watchdog reconciles every live deployment for the application. It creates one server only when Edgegap reports zero live deployments.
+- New deployments request Los Angeles coordinates so Edgegap prefers an available West Coast location; placement remains subject to Edgegap capacity.
 - If one live deployment exists but the public WebSocket is unhealthy, the watchdog preserves it, opens its circuit, and asks for manual review. It never automatically stops or restarts a server. More than one live deployment also opens the circuit.
 - Health is intentionally the same direct WebSocket handshake introduced by commit `763e6fb`: open `wss://compersion.charliefeuerborn.com` and require it to connect. This verifies the browser-to-Cloudflare-to-tunnel-to-Bayou path without requiring a separate Unity readiness endpoint.
 - Production deployment creation was re-enabled on 2026-08-12 after the tunnel fix and an application-wide reconciliation confirmed zero live deployments. Before changing or redeploying this Worker, verify the stable Edgegap version, placement, secrets, tunnel route, and that no more than one application-wide deployment is live.
@@ -55,9 +56,9 @@ This Cloudflare Worker wakes when the homepage sends `POST /wake`. It performs t
 
 ## Recovery timing
 
-With the included settings, a homepage visit wakes the Worker. If that check fails, alarms perform two subsequent checks about five seconds apart. After three failures, singleton recovery lists all live application deployments. It creates one server only if that list is empty. An existing unhealthy server is left untouched and opens the circuit for manual review. A newly created server has ten minutes to become `READY` and reconnect the public WebSocket. Cooldowns, attempt caps, durable attempt IDs, and a circuit breaker limit retries.
+With the included settings, a homepage visit wakes the Worker. If its immediate public multiplayer handshake fails, singleton recovery lists all live application deployments. It creates one server only if that list is empty. An existing unhealthy server is left untouched and opens the circuit for manual review. A newly created server has ten minutes to become `READY` and reconnect the public WebSocket. Cooldowns, attempt caps, durable attempt IDs, and a circuit breaker limit retries.
 
-`GET /watchdog/status` reports the real durable `failureCount` and configured `failureThreshold`; the homepage renders these as **Checking server (1/3)**, for example. **Server booting** is returned only after Edgegap accepts the create request and supplies a deployment ID. Browser polling controls when the display observes a state, but it does not advance the state machine.
+`GET /watchdog/status` reports the real durable `failureCount` and configured `failureThreshold`. **Server booting** is returned only after Edgegap accepts the create request and supplies a deployment ID. Browser polling controls when the display observes a state, but it does not advance the state machine.
 
 This behavior is gated by `ENABLE_DEPLOYMENTS`. When it is `false`, checks fail closed without creating a server. Changing the tracked value is not enough: deploy the Worker deliberately, then confirm the binding shown by Wrangler.
 
