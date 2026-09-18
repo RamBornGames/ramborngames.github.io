@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#071421">
+    <title>Asteroid Fishing - Ramsey Fireborn Games</title>
+    <meta name="description" content="Asteroid Fishing is a cooperative multiplayer game about catching meteoroids together, by Ramsey Fireborn Games.">
+    <link rel="canonical" href="https://ramborngames.github.io/asteroids/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Asteroid Fishing - Ramsey Fireborn Games">
+    <meta property="og:description" content="Asteroid Fishing is a cooperative multiplayer game about catching meteoroids together, by Ramsey Fireborn Games.">
+    <meta property="og:url" content="https://ramborngames.github.io/asteroids/">
+    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.1-fc4bda24">
+    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.1-fc4bda24">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="A hooked meteoroid drifting across the Asteroid Fishing starfield.">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Asteroid Fishing - Ramsey Fireborn Games">
+    <meta name="twitter:description" content="Asteroid Fishing is a cooperative multiplayer game about catching meteoroids together, by Ramsey Fireborn Games.">
+    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.1-fc4bda24">
+    <meta name="twitter:image:alt" content="A hooked meteoroid drifting across the Asteroid Fishing starfield.">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.09.18.1-fc4bda24">
+    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.09.18.1-fc4bda24">
+    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.09.18.1-fc4bda24">
+    <link rel="stylesheet" href="TemplateData/style.css?v=2026.09.18.1-fc4bda24">
+    <link rel="manifest" href="manifest.webmanifest?v=2026.09.18.1-fc4bda24">
+  </head>
+  <body>
+    <div id="unity-container" class="unity-mobile">
+      <canvas id="unity-canvas" width=960 height=600 tabindex="-1" aria-label="Asteroid Fishing game"></canvas>
+      <div id="unity-loading-bar" role="status" aria-live="polite">
+        <div id="unity-logo"></div>
+        <div id="unity-loading-copy">CASTING INTO THE STARFIELD</div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"></div>
+    </div>
+    <script>
+      const buildVersion = encodeURIComponent("2026.09.18.1-fc4bda24");
+
+      window.addEventListener("load", function () {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("ServiceWorker.js?v=" + buildVersion, { updateViaCache: "none" });
+        }
+      });
+
+      const canvas = document.querySelector("#unity-canvas");
+
+      function unityShowBanner(message, type) {
+        const warningBanner = document.querySelector("#unity-warning");
+        const entry = document.createElement("div");
+        entry.textContent = message;
+        entry.className = type === "error" ? "error" : "warning";
+        warningBanner.appendChild(entry);
+        warningBanner.style.display = "block";
+        if (type !== "error") {
+          setTimeout(function () {
+            entry.remove();
+            warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+          }, 5000);
+        }
+      }
+
+      const buildUrl = "Build";
+      const loaderUrl = buildUrl + "/2026.09.18_build1_asteroidfishing.loader.js?v=" + buildVersion;
+      const config = {
+        arguments: [],
+        dataUrl: buildUrl + "/2026.09.18_build1_asteroidfishing.data.unityweb?v=" + buildVersion,
+        frameworkUrl: buildUrl + "/2026.09.18_build1_asteroidfishing.framework.js.unityweb?v=" + buildVersion,
+        codeUrl: buildUrl + "/2026.09.18_build1_asteroidfishing.wasm.unityweb?v=" + buildVersion,
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Ramsey Fireborn Games Studio",
+        productName: "Asteroid Fishing",
+        productVersion: "2026.09.18.1-fc4bda24",
+        showBanner: unityShowBanner,
+      };
+
+      document.querySelector("#unity-loading-bar").style.display = "flex";
+
+      const script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = function () {
+        createUnityInstance(canvas, config, function (progress) {
+          document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
+        }).then(function () {
+          document.querySelector("#unity-loading-bar").style.display = "none";
+        }).catch(function (message) {
+          unityShowBanner(message, "error");
+        });
+      };
+
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
