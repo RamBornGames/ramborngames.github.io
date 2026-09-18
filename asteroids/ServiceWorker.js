@@ -1,13 +1,10 @@
-const version = encodeURIComponent("2026.09.18.1-fc4bda24");
+const version = encodeURIComponent("2026.09.18.2-ff52ffd2");
 const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
 const legacyCachePrefix = "Ramsey Fireborn Games Studio-Asteroid Fishing-";
 const cacheName = cachePrefix + version;
+const buildPathPrefix = new URL("Build/", self.registration.scope).pathname;
 const contentToCache = [
   "index.html",
-  "Build/2026.09.18_build1_asteroidfishing.loader.js?v=" + version,
-  "Build/2026.09.18_build1_asteroidfishing.framework.js.unityweb?v=" + version,
-  "Build/2026.09.18_build1_asteroidfishing.data.unityweb?v=" + version,
-  "Build/2026.09.18_build1_asteroidfishing.wasm.unityweb?v=" + version,
   "TemplateData/style.css?v=" + version,
   "manifest.webmanifest?v=" + version,
   "TemplateData/asteroids-favicon-32.png?v=" + version,
@@ -40,6 +37,13 @@ self.addEventListener("activate", function (event) {
 
 self.addEventListener("fetch", function (event) {
   if (event.request.method !== "GET") return;
+
+  // Do not intercept Unity Build payloads. GitHub Pages serves the raw Wasm
+  // directly, and Unity owns data caching; duplicating either path exhausts
+  // Safari's startup resources on larger mobile builds.
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin === self.location.origin &&
+      requestUrl.pathname.startsWith(buildPathPrefix)) return;
 
   event.respondWith((async function () {
     const cache = await caches.open(cacheName);

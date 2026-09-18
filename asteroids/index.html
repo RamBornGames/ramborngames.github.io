@@ -13,8 +13,8 @@
     <meta property="og:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta property="og:description" content="Asteroid Fishing is a cooperative multiplayer game about catching meteoroids together, by Ramsey Fireborn Games.">
     <meta property="og:url" content="https://ramborngames.github.io/asteroids/">
-    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.1-fc4bda24">
-    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.1-fc4bda24">
+    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.2-ff52ffd2">
+    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.2-ff52ffd2">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -23,14 +23,14 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta name="twitter:description" content="Asteroid Fishing is a cooperative multiplayer game about catching meteoroids together, by Ramsey Fireborn Games.">
-    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.1-fc4bda24">
+    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.09.18.2-ff52ffd2">
     <meta name="twitter:image:alt" content="A hooked meteoroid drifting across the Asteroid Fishing starfield.">
 
-    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.09.18.1-fc4bda24">
-    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.09.18.1-fc4bda24">
-    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.09.18.1-fc4bda24">
-    <link rel="stylesheet" href="TemplateData/style.css?v=2026.09.18.1-fc4bda24">
-    <link rel="manifest" href="manifest.webmanifest?v=2026.09.18.1-fc4bda24">
+    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.09.18.2-ff52ffd2">
+    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.09.18.2-ff52ffd2">
+    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.09.18.2-ff52ffd2">
+    <link rel="stylesheet" href="TemplateData/style.css?v=2026.09.18.2-ff52ffd2">
+    <link rel="manifest" href="manifest.webmanifest?v=2026.09.18.2-ff52ffd2">
   </head>
   <body>
     <div id="unity-container" class="unity-mobile">
@@ -45,13 +45,7 @@
       <div id="unity-warning"></div>
     </div>
     <script>
-      const buildVersion = encodeURIComponent("2026.09.18.1-fc4bda24");
-
-      window.addEventListener("load", function () {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("ServiceWorker.js?v=" + buildVersion, { updateViaCache: "none" });
-        }
-      });
+      const buildVersion = encodeURIComponent("2026.09.18.2-ff52ffd2");
 
       const canvas = document.querySelector("#unity-canvas");
 
@@ -71,34 +65,84 @@
       }
 
       const buildUrl = "Build";
-      const loaderUrl = buildUrl + "/2026.09.18_build1_asteroidfishing.loader.js?v=" + buildVersion;
+      const loaderUrl = buildUrl + "/2026.09.18_build2_asteroidfishing.loader.js?v=" + buildVersion;
       const config = {
         arguments: [],
-        dataUrl: buildUrl + "/2026.09.18_build1_asteroidfishing.data.unityweb?v=" + buildVersion,
-        frameworkUrl: buildUrl + "/2026.09.18_build1_asteroidfishing.framework.js.unityweb?v=" + buildVersion,
-        codeUrl: buildUrl + "/2026.09.18_build1_asteroidfishing.wasm.unityweb?v=" + buildVersion,
+        dataUrl: buildUrl + "/2026.09.18_build2_asteroidfishing.data?v=" + buildVersion,
+        frameworkUrl: buildUrl + "/2026.09.18_build2_asteroidfishing.framework.js?v=" + buildVersion,
+        codeUrl: buildUrl + "/2026.09.18_build2_asteroidfishing.wasm?v=" + buildVersion,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Ramsey Fireborn Games Studio",
         productName: "Asteroid Fishing",
-        productVersion: "2026.09.18.1-fc4bda24",
+        productVersion: "2026.09.18.2-ff52ffd2",
         showBanner: unityShowBanner,
       };
 
-      document.querySelector("#unity-loading-bar").style.display = "flex";
+      async function prepareServiceWorker() {
+        if (!("serviceWorker" in navigator)) return true;
 
-      const script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = function () {
-        createUnityInstance(canvas, config, function (progress) {
-          document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
-        }).then(function () {
-          document.querySelector("#unity-loading-bar").style.display = "none";
-        }).catch(function (message) {
-          unityShowBanner(message, "error");
-        });
-      };
+        const serviceWorkerUrl = new URL("ServiceWorker.js?v=" + buildVersion, document.URL).href;
+        const controller = navigator.serviceWorker.controller;
 
-      document.body.appendChild(script);
+        // A previously published worker caches every Build payload. Never start
+        // Unity while that worker controls this page: unregister it and make one
+        // clean navigation before installing the lightweight worker.
+        if (controller && controller.scriptURL !== serviceWorkerUrl) {
+          const resetUrl = new URL(document.URL);
+          if (resetUrl.searchParams.get("sw-reset") === buildVersion) {
+            throw new Error("The previous service worker still controls the page after reset.");
+          }
+
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (!registration || !(await registration.unregister())) {
+            throw new Error("The previous service worker could not be unregistered.");
+          }
+
+          resetUrl.searchParams.set("sw-reset", buildVersion);
+          location.replace(resetUrl.href);
+          return false;
+        }
+
+        await navigator.serviceWorker.register(serviceWorkerUrl, { updateViaCache: "none" });
+        return true;
+      }
+
+      function loadUnity() {
+        document.querySelector("#unity-loading-bar").style.display = "flex";
+
+        const script = document.createElement("script");
+        script.src = loaderUrl;
+        script.onload = function () {
+          createUnityInstance(canvas, config, function (progress) {
+            document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
+          }).then(function () {
+            document.querySelector("#unity-loading-bar").style.display = "none";
+          }).catch(function (message) {
+            unityShowBanner(message, "error");
+          });
+        };
+        script.onerror = function () {
+          unityShowBanner("Unable to load the Asteroid Fishing runtime.", "error");
+        };
+
+        document.body.appendChild(script);
+      }
+
+      (async function bootstrap() {
+        let safeToLoad = false;
+        try {
+          safeToLoad = await prepareServiceWorker();
+        } catch (error) {
+          if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+            console.error("Service worker migration failed.", error);
+            unityShowBanner("The game cache could not be updated. Close other Asteroid Fishing tabs, then reload this page.", "error");
+            return;
+          }
+          console.warn("Service worker registration failed; continuing with direct network loading.", error);
+          safeToLoad = true;
+        }
+        if (safeToLoad) loadUnity();
+      })();
     </script>
   </body>
 </html>
