@@ -1,8 +1,9 @@
-const version = encodeURIComponent("2026.11.18.3-e1f95849");
+const version = encodeURIComponent("2026.11.18.4-96ebfcac");
 const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
 const legacyCachePrefix = "Ramsey Fireborn Games Studio-Asteroid Fishing-";
 const cacheName = cachePrefix + version;
 const buildPathPrefix = new URL("Build/", self.registration.scope).pathname;
+const versionPath = new URL("version.json", self.registration.scope).pathname;
 const contentToCache = [
   "index.html",
   "TemplateData/style.css?v=" + version,
@@ -38,12 +39,12 @@ self.addEventListener("activate", function (event) {
 self.addEventListener("fetch", function (event) {
   if (event.request.method !== "GET") return;
 
-  // Do not intercept Unity Build payloads. GitHub Pages serves the raw Wasm
-  // directly, and Unity owns data caching; duplicating either path exhausts
-  // Safari's startup resources on larger mobile builds.
+  // The release check must reach the network. Do not intercept Unity Build payloads either.
+  // GitHub Pages serves raw Wasm and Unity owns data caching. Duplicating these
+  // paths exhausts Safari's startup resources on larger mobile builds.
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin === self.location.origin &&
-      requestUrl.pathname.startsWith(buildPathPrefix)) return;
+      (requestUrl.pathname === versionPath || requestUrl.pathname.startsWith(buildPathPrefix))) return;
 
   event.respondWith((async function () {
     const cache = await caches.open(cacheName);

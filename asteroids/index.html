@@ -13,8 +13,8 @@
     <meta property="og:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta property="og:description" content="Catch flying asteroids and see how many you can reel in. Play Asteroid Fishing by Ramsey Fireborn Games.">
     <meta property="og:url" content="https://ramborngames.github.io/asteroids/">
-    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.18.3-e1f95849">
-    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.18.3-e1f95849">
+    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.18.4-96ebfcac">
+    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.18.4-96ebfcac">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -23,14 +23,14 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta name="twitter:description" content="Catch flying asteroids and see how many you can reel in. Play Asteroid Fishing by Ramsey Fireborn Games.">
-    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.18.3-e1f95849">
+    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.18.4-96ebfcac">
     <meta name="twitter:image:alt" content="A hooked meteoroid drifting across the Asteroid Fishing starfield.">
 
-    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.11.18.3-e1f95849">
-    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.11.18.3-e1f95849">
-    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.11.18.3-e1f95849">
-    <link rel="stylesheet" href="TemplateData/style.css?v=2026.11.18.3-e1f95849">
-    <link rel="manifest" href="manifest.webmanifest?v=2026.11.18.3-e1f95849">
+    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.11.18.4-96ebfcac">
+    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.11.18.4-96ebfcac">
+    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.11.18.4-96ebfcac">
+    <link rel="stylesheet" href="TemplateData/style.css?v=2026.11.18.4-96ebfcac">
+    <link rel="manifest" href="manifest.webmanifest?v=2026.11.18.4-96ebfcac">
   </head>
   <body>
     <div id="unity-container" class="unity-mobile">
@@ -45,9 +45,10 @@
       <div id="unity-warning"></div>
     </div>
     <script>
-      const buildVersion = encodeURIComponent("2026.11.18.3-e1f95849");
+      const buildVersion = encodeURIComponent("2026.11.18.4-96ebfcac");
 
       const canvas = document.querySelector("#unity-canvas");
+      const loadingBar = document.querySelector("#unity-loading-bar");
 
       function unityShowBanner(message, type) {
         const warningBanner = document.querySelector("#unity-warning");
@@ -65,18 +66,59 @@
       }
 
       const buildUrl = "Build";
-      const loaderUrl = buildUrl + "/2026.11.18_build3_asteroidfishing.loader.js?v=" + buildVersion;
+      const loaderUrl = buildUrl + "/2026.11.18_build4_asteroidfishing.loader.js?v=" + buildVersion;
       const config = {
         arguments: [],
-        dataUrl: buildUrl + "/2026.11.18_build3_asteroidfishing.data?v=" + buildVersion,
-        frameworkUrl: buildUrl + "/2026.11.18_build3_asteroidfishing.framework.js?v=" + buildVersion,
-        codeUrl: buildUrl + "/2026.11.18_build3_asteroidfishing.wasm?v=" + buildVersion,
+        dataUrl: buildUrl + "/2026.11.18_build4_asteroidfishing.data?v=" + buildVersion,
+        frameworkUrl: buildUrl + "/2026.11.18_build4_asteroidfishing.framework.js?v=" + buildVersion,
+        codeUrl: buildUrl + "/2026.11.18_build4_asteroidfishing.wasm?v=" + buildVersion,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Ramsey Fireborn Games Studio",
         productName: "Asteroid Fishing",
-        productVersion: "2026.11.18.3-e1f95849",
+        productVersion: "2026.11.18.4-96ebfcac",
         showBanner: unityShowBanner,
       };
+
+      async function useLatestRelease() {
+        const pageUrl = new URL(document.URL);
+        const versionUrl = new URL("version.json", pageUrl);
+        // A unique URL also bypasses GitHub Pages' CDN cache and older workers' cache keys.
+        const checkTime = Date.now();
+        versionUrl.searchParams.set("check", checkTime);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        let latestVersion;
+        try {
+          const response = await fetch(versionUrl, { cache: "no-store", signal: controller.signal });
+          if (!response.ok) return true;
+          ({ version: latestVersion } = await response.json());
+        } catch (error) {
+          return true;
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        const releasePattern = /^\d{4}\.\d{2}\.\d{2}\.\d+-[a-f0-9]{8}$/;
+        if (typeof latestVersion !== "string" || !releasePattern.test(latestVersion)) return true;
+        const currentRelease = config.productVersion.split("-")[0];
+        if (latestVersion.split("-")[0].localeCompare(currentRelease, "en", { numeric: true }) <= 0) return true;
+
+        if (pageUrl.searchParams.get("build") === latestVersion) {
+          // Let a manual reload retry with a new CDN cache key if publication is still propagating.
+          pageUrl.searchParams.delete("build");
+          pageUrl.searchParams.delete("build-check");
+          history.replaceState(history.state, "", pageUrl.href);
+          loadingBar.style.display = "none";
+          unityShowBanner("The latest build is still being published. Reload in a moment to try again.", "error");
+          return false;
+        }
+
+        pageUrl.searchParams.set("build", latestVersion);
+        pageUrl.searchParams.set("build-check", checkTime);
+        pageUrl.searchParams.delete("sw-reset");
+        location.replace(pageUrl.href);
+        return false;
+      }
 
       async function prepareServiceWorker() {
         if (!("serviceWorker" in navigator)) return true;
@@ -108,15 +150,13 @@
       }
 
       function loadUnity() {
-        document.querySelector("#unity-loading-bar").style.display = "flex";
-
         const script = document.createElement("script");
         script.src = loaderUrl;
         script.onload = function () {
           createUnityInstance(canvas, config, function (progress) {
             document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
           }).then(function () {
-            document.querySelector("#unity-loading-bar").style.display = "none";
+            loadingBar.style.display = "none";
           }).catch(function (message) {
             unityShowBanner(message, "error");
           });
@@ -129,6 +169,8 @@
       }
 
       (async function bootstrap() {
+        loadingBar.style.display = "flex";
+        if (!(await useLatestRelease())) return;
         let safeToLoad = false;
         try {
           safeToLoad = await prepareServiceWorker();
