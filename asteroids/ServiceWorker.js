@@ -1,4 +1,4 @@
-const version = encodeURIComponent("2026.11.18.5-1e078ba6");
+const version = encodeURIComponent("2026.11.20.1-54b6aaa2");
 const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
 const legacyCachePrefix = "Ramsey Fireborn Games Studio-Asteroid Fishing-";
 const cacheName = cachePrefix + version;
