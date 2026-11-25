@@ -1,4 +1,4 @@
-const version = encodeURIComponent("2026.11.25.2-189f6fc0");
+const version = encodeURIComponent("2026.11.25.3-f4e9e53a");
 const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
 const legacyCachePrefix = "Ramsey Fireborn Games Studio-Asteroid Fishing-";
 const cacheName = cachePrefix + version;
@@ -45,7 +45,8 @@ self.addEventListener("fetch", function (event) {
   // paths exhausts Safari's startup resources on larger mobile builds.
   // Versioned optional bundles also use the HTTP cache without a second Cache API copy.
   const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin === self.location.origin &&
+  // Cross-origin APIs own their cache policy, including the live arcade totals.
+  if (requestUrl.origin !== self.location.origin ||
       (requestUrl.pathname === versionPath || requestUrl.pathname.startsWith(buildPathPrefix)
         || requestUrl.pathname.startsWith(deferredPathPrefix))) return;
 
