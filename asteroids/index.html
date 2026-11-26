@@ -13,8 +13,8 @@
     <meta property="og:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta property="og:description" content="Catch flying asteroids and see how many you can reel in. Play Asteroid Fishing by Ramsey Fireborn Games.">
     <meta property="og:url" content="https://ramborngames.github.io/asteroids/">
-    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.4-a5da2b68">
-    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.4-a5da2b68">
+    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.5-92c6b33e">
+    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.5-92c6b33e">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -23,14 +23,14 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta name="twitter:description" content="Catch flying asteroids and see how many you can reel in. Play Asteroid Fishing by Ramsey Fireborn Games.">
-    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.4-a5da2b68">
+    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.5-92c6b33e">
     <meta name="twitter:image:alt" content="A hooked meteoroid drifting across the Asteroid Fishing starfield.">
 
-    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.11.25.4-a5da2b68">
-    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.11.25.4-a5da2b68">
-    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.11.25.4-a5da2b68">
-    <link rel="stylesheet" href="TemplateData/style.css?v=2026.11.25.4-a5da2b68">
-    <link rel="manifest" href="manifest.webmanifest?v=2026.11.25.4-a5da2b68">
+    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.11.25.5-92c6b33e">
+    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.11.25.5-92c6b33e">
+    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.11.25.5-92c6b33e">
+    <link rel="stylesheet" href="TemplateData/style.css?v=2026.11.25.5-92c6b33e">
+    <link rel="manifest" href="manifest.webmanifest?v=2026.11.25.5-92c6b33e">
   </head>
   <body>
     <div id="unity-container" class="unity-mobile">
@@ -45,7 +45,7 @@
       <div id="unity-warning"></div>
     </div>
     <script>
-      const buildVersion = encodeURIComponent("2026.11.25.4-a5da2b68");
+      const buildVersion = encodeURIComponent("2026.11.25.5-92c6b33e");
 
       const canvas = document.querySelector("#unity-canvas");
       const loadingBar = document.querySelector("#unity-loading-bar");
@@ -66,25 +66,26 @@
       }
 
       const buildUrl = "Build";
-      const loaderUrl = buildUrl + "/2026.11.25_build4_asteroidfishing.loader.js?v=" + buildVersion;
+      const loaderUrl = buildUrl + "/2026.11.25_build5_asteroidfishing.loader.js?v=" + buildVersion;
       const config = {
         arguments: [],
-        dataUrl: buildUrl + "/2026.11.25_build4_asteroidfishing.data?v=" + buildVersion,
-        frameworkUrl: buildUrl + "/2026.11.25_build4_asteroidfishing.framework.js?v=" + buildVersion,
-        codeUrl: buildUrl + "/2026.11.25_build4_asteroidfishing.wasm?v=" + buildVersion,
+        dataUrl: buildUrl + "/2026.11.25_build5_asteroidfishing.data?v=" + buildVersion,
+        frameworkUrl: buildUrl + "/2026.11.25_build5_asteroidfishing.framework.js?v=" + buildVersion,
+        codeUrl: buildUrl + "/2026.11.25_build5_asteroidfishing.wasm?v=" + buildVersion,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Ramsey Fireborn Games Studio",
         productName: "Asteroid Fishing",
-        productVersion: "2026.11.25.4-a5da2b68",
+        productVersion: "2026.11.25.5-92c6b33e",
         showBanner: unityShowBanner,
       };
 
       const metricsBase = "https://asteroids-metrics.cfireborn.workers.dev/api/";
       const page = new URL(document.URL);
-      const metricsEnabled = page.origin === "https://ramborngames.github.io"
+      const directLaunch = page.search.slice(1).split("&").includes("mode=metronome");
+      const modeMetricsEnabled = page.origin === "https://ramborngames.github.io"
         && page.pathname.startsWith("/asteroids/")
-        && !page.search.slice(1).split("&").includes("mode=metronome")
         && !navigator.globalPrivacyControl && navigator.doNotTrack !== "1" && window.doNotTrack !== "1";
+      const metricsEnabled = modeMetricsEnabled && !directLaunch;
       const navigationKey = "asteroids.metrics.startup";
       let startupOrigin = performance.timeOrigin;
       let foregroundStartup = document.visibilityState === "visible";
@@ -235,6 +236,96 @@
           // Startup metrics are best effort.
         }
       }
+
+      function trackModeSessions() {
+        // The indices match ArcadeMetrics.Mode in Unity.
+        const modes = [null, "rhythm", "puzzle", "tap", "launch"];
+        let skipFirstLoad = directLaunch;
+        let selection = null;
+        let session = null;
+        let heartbeat = null;
+
+        async function report(current) {
+          const visibleMs = current.visibleSince === null ? 0 : performance.now() - current.visibleSince;
+          const playMs = Math.min(86400000, Math.round(current.elapsed + visibleMs));
+          if (playMs <= current.sentMs) return;
+          current.sentMs = playMs;
+          try {
+            const response = await fetch(metricsBase + "session", {
+              method: "POST",
+              body: JSON.stringify({ id: current.id, mode: current.mode, loadMs: current.loadMs, playMs }),
+              credentials: "omit",
+              keepalive: true
+            });
+            if (response.ok) return;
+          } catch {
+            // The next heartbeat can send the latest total again.
+          }
+          if (current.sentMs === playMs) current.sentMs = -1;
+        }
+
+        function pause() {
+          if (selection) selection.loadStarted = null;
+          if (session?.visibleSince != null) {
+            session.elapsed += performance.now() - session.visibleSince;
+            session.visibleSince = null;
+            report(session);
+          }
+        }
+
+        function resume() {
+          if (session && document.visibilityState === "visible") session.visibleSince ??= performance.now();
+        }
+
+        function leave() {
+          selection = null;
+          if (!session) return;
+          clearInterval(heartbeat);
+          report(session);
+          session = null;
+        }
+
+        window.asteroidsArcadeMetric = (phase, modeIndex) => {
+          if (phase === 2) {
+            leave();
+          } else if (phase === 0 && modes[modeIndex]) {
+            leave();
+            selection = {
+              mode: modes[modeIndex],
+              loadStarted: !skipFirstLoad && document.visibilityState === "visible" ? performance.now() : null
+            };
+            skipFirstLoad = false;
+          } else if (phase === 1 && selection?.mode === modes[modeIndex]) {
+            const entering = selection;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              if (selection !== entering) return;
+              selection = null;
+              const now = performance.now();
+              const visible = document.visibilityState === "visible";
+              const loadMs = entering.loadStarted === null ? 0 : Math.max(1, Math.round(now - entering.loadStarted));
+              session = {
+                id: crypto.randomUUID(), mode: entering.mode, elapsed: 0, sentMs: -1,
+                visibleSince: visible ? now : null, loadMs: visible && loadMs > 0 && loadMs <= 300000 ? loadMs : null
+              };
+              report(session);
+              heartbeat = setInterval(() => {
+                if (session?.visibleSince != null) report(session);
+              }, 30000);
+            }));
+          }
+        };
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") resume();
+          else pause();
+        });
+        window.addEventListener("pageshow", resume);
+        window.addEventListener("pagehide", event => {
+          if (event.persisted) pause();
+          else leave();
+        });
+      }
+
+      if (modeMetricsEnabled && typeof crypto.randomUUID === "function") trackModeSessions();
 
       function loadUnity() {
         const script = document.createElement("script");
