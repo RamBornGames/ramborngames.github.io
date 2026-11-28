@@ -41,19 +41,23 @@
       remaining: source.remaining, selectedPiece: source.selectedPiece, pieces };
   }
 
-  function parseSave(raw) {
+  function parseJson(raw) {
     try {
-      const save = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (save?.version !== 1) return emptySave;
-      const highScores = {};
-      for (const mode of Object.keys(modes)) {
-        const score = save.highScores?.[mode];
-        highScores[mode] = integer(score, 0, mode === "launch" ? Number.MAX_SAFE_INTEGER : maxScore) ? score : 0;
-      }
-      return { version: 1, highScores, puzzle: parsePuzzle(save.puzzle) };
+      return JSON.parse(raw);
     } catch {
-      return emptySave;
+      return null;
     }
+  }
+
+  function parseSave(raw) {
+    const save = typeof raw === "string" ? parseJson(raw) : raw;
+    if (save?.version !== 1) return emptySave;
+    const highScores = {};
+    for (const mode of Object.keys(modes)) {
+      const score = save.highScores?.[mode];
+      highScores[mode] = integer(score, 0, mode === "launch" ? Number.MAX_SAFE_INTEGER : maxScore) ? score : 0;
+    }
+    return { version: 1, highScores, puzzle: parsePuzzle(save.puzzle) };
   }
 
   function mergeSaves(current, candidate,
@@ -77,30 +81,36 @@
     function loadRecord(key = profile) {
       const memory = cached.get(key);
       try {
-        const stored = parseSave(storage.getItem(prefix + key));
+        const record = parseJson(storage.getItem(prefix + key));
+        const stored = parseSave(record);
+        const stamp = record?.lastAutosave;
+        const lastAutosave = record?.version === 1 && typeof stamp?.mode === "string"
+          && Object.hasOwn(modes, stamp.mode) && integer(stamp.at, 1, Number.MAX_SAFE_INTEGER)
+          ? { mode: stamp.mode, at: stamp.at } : undefined;
         // The disk checkpoint can move backward after a cloud conflict. Only reuse an
         // in-memory checkpoint if its write failed and the disk still has its old base.
         const pendingBase = memory?.pendingBase && sameCheckpoint(stored.puzzle, memory.pendingBase)
           ? memory.pendingBase : undefined;
         const save = memory ? mergeSaves(stored, memory.save, pendingBase ? memory.save.puzzle : stored.puzzle) : stored;
-        cached.set(key, { save, stored, pendingBase });
-        return { save, stored };
+        cached.set(key, { save, stored, pendingBase, lastAutosave });
+        return { save, stored, lastAutosave };
       } catch {
         storageAvailable = false;
-        return { save: memory?.save ?? emptySave };
+        return { save: memory?.save ?? emptySave, lastAutosave: memory?.lastAutosave };
       }
     }
 
     const load = key => loadRecord(key).save;
 
-    function persist(key, save, observed) {
+    function persist(key, save, observed, lastAutosave = cached.get(key)?.lastAutosave) {
       try {
-        storage.setItem(prefix + key, JSON.stringify(save));
-        cached.set(key, { save, stored: save });
+        storage.setItem(prefix + key, JSON.stringify({ ...save, lastAutosave }));
+        cached.set(key, { save, stored: save, lastAutosave });
         storageAvailable = true;
       } catch {
-        const stored = observed ?? cached.get(key)?.stored ?? emptySave;
-        cached.set(key, { save, stored, pendingBase: stored.puzzle });
+        const memory = cached.get(key);
+        const stored = observed ?? memory?.stored ?? emptySave;
+        cached.set(key, { save, stored, pendingBase: stored.puzzle, lastAutosave: memory?.lastAutosave });
         storageAvailable = false;
       }
       return storageAvailable;
@@ -144,10 +154,12 @@
           const combined = mergeSaves(local.save, cloud, cloudChangedCheckpoint ? cloud.puzzle : local.save.puzzle);
           current.revision = reply.revision;
           current.cloud = cloud;
-          persist(key, combined, local.stored);
+          const persisted = persist(key, combined, local.stored);
           const pending = JSON.stringify(combined) !== JSON.stringify(cloud);
           if (pending) queue(3000);
-          updateStatus(pending ? "Progress saved on this device. Cloud sync pending." : "Cloud save up to date.");
+          updateStatus(pending
+            ? (persisted ? "Progress saved on this device. Cloud sync pending." : "Cloud sync pending.")
+            : "Cloud save up to date.");
           return !pending;
         } catch (error) {
           if (session !== current) return;
@@ -222,13 +234,15 @@
       return true;
     }
 
-    function storeChanged(before, save) {
-      const persisted = persist(profile, save, before.stored);
-      if (JSON.stringify(before.save) !== JSON.stringify(save)) {
-        if (session?.token) status = "Saved on this device. Cloud sync pending.";
+    function storeChanged(before, save, mode) {
+      const wasAvailable = storageAvailable;
+      const persisted = persist(profile, save, before.stored, mode ? { mode, at: Date.now() } : undefined);
+      const progressChanged = JSON.stringify(before.save) !== JSON.stringify(save);
+      if (progressChanged) {
+        if (session?.token) status = persisted ? "Saved on this device. Cloud sync pending." : "Cloud sync pending.";
         queue(3000);
-        changed();
       }
+      if (progressChanged || (persisted && mode) || storageAvailable !== wasAvailable) changed();
       return persisted;
     }
 
@@ -236,25 +250,29 @@
       read: () => JSON.stringify(load()),
       write(raw) {
         const before = loadRecord();
-        return storeChanged(before, mergeSaves(before.save, parseSave(raw), before.save.puzzle));
+        const save = mergeSaves(before.save, parseSave(raw), before.save.puzzle);
+        const keys = Object.keys(modes);
+        const mode = keys.find(key => save.highScores[key] > before.save.highScores[key])
+          ?? keys.find(key => save.highScores[key] > before.stored?.highScores[key]);
+        return storeChanged(before, save, mode);
       },
       writeCheckpoint(raw, expectedVersion) {
         const before = loadRecord();
         const after = parseSave(raw);
         if (before.save.puzzle.updatedAt !== expectedVersion || after.puzzle.updatedAt <= expectedVersion) return false;
-        storeChanged(before, mergeSaves(before.save, after, after.puzzle));
+        storeChanged(before, mergeSaves(before.save, after, after.puzzle), "puzzle");
         return true;
       },
       reconcileStorage(key, raw) {
         if (key !== prefix + guest || raw === null) return;
-        const { save, stored } = loadRecord(guest);
+        const { save, stored, lastAutosave } = loadRecord(guest);
         const combined = mergeSaves(save, parseSave(raw), save.puzzle);
         cached.set(guest, { ...cached.get(guest), save: combined });
         if (!stored) return;
         // Reconcile only scores and always take the checkpoint from the current disk record.
         if (JSON.stringify(combined.highScores) === JSON.stringify(stored.highScores)) return;
         try {
-          storage.setItem(key, JSON.stringify({ ...stored, highScores: combined.highScores }));
+          storage.setItem(key, JSON.stringify({ ...stored, highScores: combined.highScores, lastAutosave }));
         } catch {
           storageAvailable = false;
         }
@@ -265,12 +283,6 @@
         persist(profile, mergeSaves(local.save, load(guest)), local.stored);
         queue(0);
         updateStatus("Guest progress copied to your account.");
-      },
-      saveNow() {
-        if (session?.token) return sync({ pull: true });
-        const local = loadRecord();
-        const persisted = persist(profile, local.save, local.stored);
-        if (persisted) updateStatus("Progress saved on this device.");
       },
       sync,
       authenticate,
@@ -283,8 +295,8 @@
       },
       signOut,
       snapshot() {
-        const save = load();
-        return { save, username: session?.username, displayName: session?.displayName, signedIn: Boolean(session?.token),
+        const { save, lastAutosave } = loadRecord();
+        return { save, lastAutosave, username: session?.username, displayName: session?.displayName, signedIn: Boolean(session?.token),
           hasGuestProgress: JSON.stringify(load(guest)) !== emptyJson, storageAvailable, status };
       }
     };

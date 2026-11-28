@@ -101,7 +101,7 @@
       saves.acceptProviderSession(reply);
       resetAuth();
       refreshPanel();
-      (busy ? find("sync-status") : find("save-now")).focus();
+      find("sync-status").focus();
     }
 
     async function pollOAuth(flow) {
@@ -280,8 +280,27 @@
       });
     }
 
+    let lastAutosave;
+    let autosaveTimer;
+
+    function refreshAutosave() {
+      const node = find("autosave");
+      let message = "Progress saves automatically as you play.";
+      if (lastAutosave) {
+        const seconds = Math.max(0, Math.floor((Date.now() - lastAutosave.at) / 1000));
+        const [age, unit] = seconds < 60 ? [seconds, "second"]
+          : seconds < 3600 ? [Math.floor(seconds / 60), "minute"]
+          : seconds < 86400 ? [Math.floor(seconds / 3600), "hour"]
+          : [Math.floor(seconds / 86400), "day"];
+        message = `Progress saved automatically (${age} ${unit}${age === 1 ? "" : "s"} ago) from ${modes[lastAutosave.mode]}.`;
+      }
+      if (node.textContent !== message) node.textContent = message;
+    }
+
     function refreshPanel() {
       const view = saves.snapshot();
+      lastAutosave = view.lastAutosave;
+      refreshAutosave();
       find("profile").textContent = view.displayName || "Guest on this device";
       panel.querySelector("#player-checkpoint").textContent = view.save.puzzle.active
         ? "Puzzle Fishing saved at round " + view.save.puzzle.round + ". Open the mode to resume."
@@ -374,7 +393,7 @@
           <button type="button" id="player-back" class="player-secondary" hidden>Back to sign-in options</button>
           </section>
           <p id="player-accounts-availability" role="status" hidden></p>
-          <button type="button" id="player-save-now">Save now</button>
+          <p id="player-autosave"></p>
           <button type="button" id="player-copy" class="player-secondary">Copy guest progress</button>
           <button type="button" id="player-signout" class="player-secondary">Sign out</button>
           <button type="button" id="player-install" class="player-secondary">Add to Home Screen</button>
@@ -386,6 +405,7 @@
         panel.querySelector("#player-close").onclick = () => panel.close();
         panel.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
         panel.addEventListener("close", () => {
+          if (!panel.open) clearInterval(autosaveTimer);
           resetAuth();
           form.elements.password.value = "";
           if (isMenuVisible()) entry.focus({ preventScroll: true });
@@ -442,7 +462,6 @@
           formMessage = "";
           refreshPanel();
         };
-        panel.querySelector("#player-save-now").onclick = () => run(() => saves.saveNow());
         panel.querySelector("#player-copy").onclick = () => run(async () => { saves.copyGuest(); await saves.sync(); });
         panel.querySelector("#player-signout").onclick = () => run(() => saves.signOut());
         panel.querySelector("#player-install").onclick = () => {
@@ -453,6 +472,9 @@
       formMessage = "";
       refreshPanel();
       panel.showModal();
+      clearInterval(autosaveTimer);
+      autosaveTimer = setInterval(refreshAutosave, 1000);
+      saves.sync({ pull: true });
       if (canReachAccounts && cloudAvailable !== true) {
         request("/v1/availability").then(result => {
           cloudAvailable = result.available === true;

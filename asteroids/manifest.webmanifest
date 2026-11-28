@@ -10,13 +10,13 @@
   "theme_color": "#071421",
   "icons": [
     {
-      "src": "TemplateData/asteroid-icon-192.png?v=2026.11.28.1-f44e9f57",
+      "src": "TemplateData/asteroid-icon-192.png?v=2026.11.28.2-bab325d4",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "TemplateData/asteroid-icon-512.png?v=2026.11.28.1-f44e9f57",
+      "src": "TemplateData/asteroid-icon-512.png?v=2026.11.28.2-bab325d4",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
