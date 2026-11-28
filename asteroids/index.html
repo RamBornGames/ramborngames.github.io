@@ -13,8 +13,8 @@
     <meta property="og:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta property="og:description" content="Catch flying asteroids and see how many you can reel in. Play Asteroid Fishing by Ramsey Fireborn Games.">
     <meta property="og:url" content="https://ramborngames.github.io/asteroids/">
-    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.5-92c6b33e">
-    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.5-92c6b33e">
+    <meta property="og:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.28.1-f44e9f57">
+    <meta property="og:image:secure_url" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.28.1-f44e9f57">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -23,14 +23,15 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Asteroid Fishing - Ramsey Fireborn Games">
     <meta name="twitter:description" content="Catch flying asteroids and see how many you can reel in. Play Asteroid Fishing by Ramsey Fireborn Games.">
-    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.25.5-92c6b33e">
+    <meta name="twitter:image" content="https://ramborngames.github.io/asteroids/TemplateData/asteroids-social-preview.png?v=2026.11.28.1-f44e9f57">
     <meta name="twitter:image:alt" content="A hooked meteoroid drifting across the Asteroid Fishing starfield.">
 
-    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.11.25.5-92c6b33e">
-    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.11.25.5-92c6b33e">
-    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.11.25.5-92c6b33e">
-    <link rel="stylesheet" href="TemplateData/style.css?v=2026.11.25.5-92c6b33e">
-    <link rel="manifest" href="manifest.webmanifest?v=2026.11.25.5-92c6b33e">
+    <link rel="icon" type="image/png" sizes="32x32" href="TemplateData/asteroids-favicon-32.png?v=2026.11.28.1-f44e9f57">
+    <link rel="shortcut icon" type="image/x-icon" href="TemplateData/favicon.ico?v=2026.11.28.1-f44e9f57">
+    <link rel="apple-touch-icon" sizes="180x180" href="TemplateData/asteroids-apple-touch-icon.png?v=2026.11.28.1-f44e9f57">
+    <link rel="stylesheet" href="TemplateData/style.css?v=2026.11.28.1-f44e9f57">
+    <link rel="stylesheet" href="TemplateData/player-saves.css?v=2026.11.28.1-f44e9f57" media="print" onload="this.media='all'">
+    <link rel="manifest" href="manifest.webmanifest?v=2026.11.28.1-f44e9f57">
   </head>
   <body>
     <div id="unity-container" class="unity-mobile">
@@ -44,11 +45,42 @@
       </div>
       <div id="unity-warning"></div>
     </div>
+    <dialog id="install-cta" aria-labelledby="install-title" aria-describedby="install-summary">
+      <button id="install-close" type="button" aria-label="Close install instructions">×</button>
+      <div class="install-layout">
+        <div class="install-art" aria-hidden="true"><div class="install-icon"></div></div>
+        <div class="install-content">
+          <h1 id="install-title">Add Asteroids to your Home Screen</h1>
+          <p id="install-summary">Launch straight into the arcade from the Asteroids icon.</p>
+          <ol class="install-steps" id="install-ios" hidden>
+            <li>Open <strong>Share</strong> in your browser toolbar. It may be under <strong>More</strong>.</li>
+            <li>Tap <strong>Add to Home Screen</strong>. Turn on <strong>Open as Web App</strong> if shown, then tap <strong>Add</strong>.</li>
+          </ol>
+          <p class="install-help" id="install-ios-help" hidden>Can’t find Add to Home Screen? Open the link in Safari and check Share → Edit Actions.</p>
+          <ol class="install-steps" id="install-android" hidden>
+            <li>Open the browser menu <strong>⋮</strong>.</li>
+            <li>Look for <strong>Install</strong> or <strong>Add to Home screen</strong>, then follow the prompts.</li>
+          </ol>
+          <p class="install-help" id="install-android-help" hidden>If your browser has no install option, open the link in Chrome.</p>
+          <p id="install-success" role="status" hidden>Open Asteroids from your Home Screen once the icon appears.</p>
+          <div class="install-actions">
+            <button id="install-native" type="button" hidden>Install Asteroids</button>
+            <button id="install-continue" type="button">Play in browser</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+    <script defer id="player-save-bridge" src="TemplateData/player-saves.js?v=2026.11.28.1-f44e9f57"></script>
     <script>
-      const buildVersion = encodeURIComponent("2026.11.25.5-92c6b33e");
+      const buildVersion = encodeURIComponent("2026.11.28.1-f44e9f57");
 
       const canvas = document.querySelector("#unity-canvas");
       const loadingBar = document.querySelector("#unity-loading-bar");
+      const saveBridge = document.querySelector("#player-save-bridge");
+      const saveBridgeReady = new Promise(resolve => {
+        saveBridge.addEventListener("load", resolve, { once: true });
+        saveBridge.addEventListener("error", resolve, { once: true });
+      });
 
       function unityShowBanner(message, type) {
         const warningBanner = document.querySelector("#unity-warning");
@@ -66,29 +98,121 @@
       }
 
       const buildUrl = "Build";
-      const loaderUrl = buildUrl + "/2026.11.25_build5_asteroidfishing.loader.js?v=" + buildVersion;
+      const loaderUrl = buildUrl + "/2026.11.28_build1_asteroidfishing.loader.js?v=" + buildVersion;
       const config = {
         arguments: [],
-        dataUrl: buildUrl + "/2026.11.25_build5_asteroidfishing.data?v=" + buildVersion,
-        frameworkUrl: buildUrl + "/2026.11.25_build5_asteroidfishing.framework.js?v=" + buildVersion,
-        codeUrl: buildUrl + "/2026.11.25_build5_asteroidfishing.wasm?v=" + buildVersion,
+        dataUrl: buildUrl + "/2026.11.28_build1_asteroidfishing.data?v=" + buildVersion,
+        frameworkUrl: buildUrl + "/2026.11.28_build1_asteroidfishing.framework.js?v=" + buildVersion,
+        codeUrl: buildUrl + "/2026.11.28_build1_asteroidfishing.wasm?v=" + buildVersion,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "Ramsey Fireborn Games Studio",
         productName: "Asteroid Fishing",
-        productVersion: "2026.11.25.5-92c6b33e",
+        productVersion: "2026.11.28.1-f44e9f57",
         showBanner: unityShowBanner,
       };
 
       const metricsBase = "https://asteroids-metrics.cfireborn.workers.dev/api/";
       const page = new URL(document.URL);
       const directLaunch = page.search.slice(1).split("&").includes("mode=metronome");
-      const modeMetricsEnabled = page.origin === "https://ramborngames.github.io"
+      // Install CTA prototype previews can be reviewed on desktop without reporting visits.
+      const installPreview = page.searchParams.get("install-preview");
+      const previewingInstall = installPreview === "ios" || installPreview === "android";
+      const modeMetricsEnabled = !previewingInstall && page.origin === "https://ramborngames.github.io"
         && page.pathname.startsWith("/asteroids/")
         && !navigator.globalPrivacyControl && navigator.doNotTrack !== "1" && window.doNotTrack !== "1";
       const metricsEnabled = modeMetricsEnabled && !directLaunch;
       const navigationKey = "asteroids.metrics.startup";
       let startupOrigin = performance.timeOrigin;
       let foregroundStartup = document.visibilityState === "visible";
+      let unityReady = false;
+      const installDialog = setupInstallPrompt();
+
+      function setupInstallPrompt() {
+        const dialog = document.querySelector("#install-cta");
+        if (!dialog?.showModal) return null;
+
+        const installed = navigator.standalone === true || ["standalone", "fullscreen", "minimal-ui"].some(mode =>
+          window.matchMedia(`(display-mode: ${mode})`).matches);
+        const ua = navigator.userAgent;
+        const ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+        const android = /Android/i.test(ua) || navigator.userAgentData?.platform === "Android";
+        const platform = previewingInstall ? installPreview : ios ? "ios" : android ? "android" : null;
+        if (!platform || (!previewingInstall && (installed || !window.isSecureContext || window.self !== window.top))) return null;
+
+        const dismissKey = "asteroids.install-dismissed";
+        const steps = document.querySelector("#install-" + platform);
+        const help = document.querySelector("#install-" + platform + "-help");
+        const install = document.querySelector("#install-native");
+        const success = document.querySelector("#install-success");
+        let pendingPrompt = null;
+        let installStarted = false;
+
+        function renderInstallActions() {
+          install.hidden = !pendingPrompt || installStarted;
+          steps.hidden = !install.hidden || installStarted;
+          help.hidden = steps.hidden;
+          success.hidden = !installStarted;
+        }
+
+        function rememberDismissal() {
+          if (previewingInstall) return;
+          try { localStorage.setItem(dismissKey, "1"); } catch {
+            // The game remains accessible when browser storage is disabled.
+          }
+        }
+
+        function show() {
+          if (installStarted) return false;
+          if (!dialog.open) dialog.showModal();
+          return true;
+        }
+
+        function acceptInstall() {
+          pendingPrompt = null;
+          installStarted = true;
+          delete window.asteroidsShowInstall;
+          rememberDismissal();
+          renderInstallActions();
+        }
+
+        dialog.addEventListener("close", () => {
+          rememberDismissal();
+          if (unityReady && document.activeElement === document.body) canvas.focus({ preventScroll: true });
+        });
+        document.querySelector("#install-close").addEventListener("click", () => dialog.close());
+        document.querySelector("#install-continue").addEventListener("click", () => dialog.close());
+
+        if (!previewingInstall && platform === "android") {
+          window.addEventListener("beforeinstallprompt", event => {
+            if (installStarted) return;
+            event.preventDefault();
+            pendingPrompt = event;
+            renderInstallActions();
+          });
+          window.addEventListener("appinstalled", acceptInstall);
+          install.addEventListener("click", async () => {
+            if (!pendingPrompt) return;
+            const event = pendingPrompt;
+            pendingPrompt = null;
+            renderInstallActions();
+            try {
+              await event.prompt();
+              if ((await event.userChoice).outcome === "accepted") acceptInstall();
+            } catch {
+              // Leave the browser menu instructions available if the native prompt fails.
+            }
+          });
+        }
+
+        renderInstallActions();
+        window.asteroidsShowInstall = show;
+        let dismissed = false;
+        try { dismissed = localStorage.getItem(dismissKey) === "1"; } catch {
+          // Show the CTA if the browser cannot read the preference.
+        }
+        if (previewingInstall || (!directLaunch && !dismissed)) show();
+        return dialog;
+      }
 
       if (metricsEnabled) {
         try {
@@ -330,17 +454,21 @@
       function loadUnity() {
         const script = document.createElement("script");
         script.src = loaderUrl;
-        script.onload = function () {
+        script.onload = async function () {
+          await saveBridgeReady;
           createUnityInstance(canvas, config, function (progress) {
             document.querySelector("#unity-progress-bar-full").style.width = (100 * progress) + "%";
           }).then(function (runtime) {
+            unityReady = true;
             loadingBar.style.display = "none";
+            if (!installDialog?.open && document.activeElement === document.body) canvas.focus({ preventScroll: true });
             if (metricsEnabled) {
               setTimeout(reportArcadeVisit, 0);
             }
             // Give the playable canvas a paint and a grace period before optional downloads.
             requestAnimationFrame(() => requestAnimationFrame(() => {
-              if (metricsEnabled && foregroundStartup) reportStartup();
+              // A visible install CTA still blocks the canvas even when Unity is ready.
+              if (metricsEnabled && foregroundStartup && !installDialog?.open) reportStartup();
               setTimeout(() => runtime.SendMessage("WebDeferredContent", "BeginLoading"), 1000);
             }));
           }).catch(function (message) {

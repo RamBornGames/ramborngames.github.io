@@ -28,6 +28,138 @@ body { padding: 0; margin: 0; background: radial-gradient(circle at 50% 42%, #12
 #unity-warning .warning { background: #f4c15d; }
 #unity-warning .error { background: #ff7b72; }
 
+#install-cta {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: max(3.75rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  border: 0;
+  background: radial-gradient(ellipse at 50% 10%, #163955, #091a2c 48%, #060e1b 84%);
+  color: #f2faff;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+#install-cta button {
+  min-height: 48px;
+  border-radius: 0.8rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#install-cta button:focus-visible {
+  outline: 3px solid #f7ca7e;
+  outline-offset: 3px;
+}
+
+#install-cta #install-close {
+  position: absolute;
+  top: max(0.5rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  width: 48px;
+  border: 1px solid #50748c;
+  background: #102337;
+  color: #f2faff;
+  font-size: 1.5rem;
+}
+
+.install-layout {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 100%;
+  gap: clamp(0.75rem, 3vh, 1.75rem);
+  margin-inline: auto;
+  max-width: 30rem;
+}
+
+.install-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 22rem);
+  height: clamp(7.2rem, 24vh, 11.5rem);
+  background:
+    radial-gradient(circle at 11% 52%, #f7ca7e 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 21%, #a9ecf7 0 1px, transparent 2px),
+    radial-gradient(circle at 87% 65%, #d3faff 0 2px, transparent 3px),
+    radial-gradient(circle at 27% 82%, #a9ecf7 0 1px, transparent 2px),
+    radial-gradient(ellipse at center, #20719766, transparent 72%);
+}
+
+.install-art::before, .install-art::after {
+  content: "";
+  position: absolute;
+  width: 88%;
+  height: 60%;
+  border: 1px solid #77ddeb55;
+  border-radius: 50%;
+  transform: rotate(-15deg);
+  pointer-events: none;
+}
+
+.install-art::after {
+  width: 100%;
+  height: 72%;
+  border-color: #9feaff2b;
+}
+
+.install-icon {
+  position: relative;
+  z-index: 1;
+  width: clamp(5rem, 18vh, 8.2rem);
+  aspect-ratio: 1;
+  border: 1px solid #7ed7e6;
+  border-radius: 24%;
+  background: #0a1928 url('asteroid-icon-192.png') no-repeat center / cover;
+  box-shadow: 0 0 2.75rem #65d9f352, 0 0.6rem 1.75rem #0008;
+}
+
+#install-title {
+  margin: 0;
+  font-size: clamp(1.85rem, 7.6vw, 2.85rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+#install-summary { margin: 0.75rem 0 1rem; color: #d1e8f3; }
+
+.install-steps {
+  padding: 0.9rem 1rem 0.9rem 2.35rem;
+  margin: 0;
+  border: 1px solid #45657a;
+  border-radius: 0.9rem;
+  background: #12283bc4;
+  line-height: 1.4;
+}
+
+.install-steps li + li { margin-top: 0.5rem; }
+.install-steps li::marker { color: #a5ecf7; font-weight: 700; }
+.install-help { margin: 0.6rem 0 0; color: #b0cedd; font-size: 0.85rem; line-height: 1.35; }
+#install-success { color: #a5ecf7; }
+.install-actions { display: grid; gap: 0.65rem; margin-top: 1.25rem; }
+#install-native { border: 1px solid #9ff4ff; background: #a3eff7; color: #071421; }
+#install-continue { border: 1px solid #719bb0; background: #12283b; color: #f2faff; }
+
+@media (orientation: landscape) and (max-height: 550px) and (min-width: 620px) {
+  #install-cta { padding-block: max(0.9rem, env(safe-area-inset-top)) max(0.9rem, env(safe-area-inset-bottom)); padding-right: max(4.25rem, env(safe-area-inset-right)); }
+  .install-layout { grid-template-columns: minmax(10rem, 2fr) minmax(18rem, 3fr); align-items: center; max-width: 48rem; gap: 1.5rem; }
+  .install-art { height: 9rem; }
+  #install-title { font-size: 1.8rem; }
+  #install-summary { margin: 0.55rem 0 0.7rem; }
+  .install-steps { padding-block: 0.65rem; font-size: 0.92rem; }
+  .install-steps li + li { margin-top: 0.35rem; }
+  .install-actions { margin-top: 0.8rem; }
+}
+
 @media (max-width: 480px) {
   #unity-logo { width: 144px; height: 144px; }
   #unity-loading-copy { font-size: 10px; }

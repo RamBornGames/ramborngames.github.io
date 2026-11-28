@@ -1,4 +1,4 @@
-const version = encodeURIComponent("2026.11.25.5-92c6b33e");
+const version = encodeURIComponent("2026.11.28.1-f44e9f57");
 const cachePrefix = "unity-webgl-" + self.registration.scope + "-";
 const legacyCachePrefix = "Ramsey Fireborn Games Studio-Asteroid Fishing-";
 const cacheName = cachePrefix + version;
@@ -8,6 +8,8 @@ const versionPath = new URL("version.json", self.registration.scope).pathname;
 const contentToCache = [
   "index.html",
   "TemplateData/style.css?v=" + version,
+  "TemplateData/player-saves.css?v=" + version,
+  "TemplateData/player-saves.js?v=" + version,
   "manifest.webmanifest?v=" + version,
   "TemplateData/asteroids-favicon-32.png?v=" + version,
   "TemplateData/favicon.ico?v=" + version,
